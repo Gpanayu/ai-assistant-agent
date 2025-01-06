@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Assistant Agent</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f2f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .video-container {
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .video-feed {
+            width: 100%;
+            max-width: 500px;
+            height: auto;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background-color: #0084ff;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0066cc;
+        }
+        button.active {
+            background-color: #00cc66;
+        }
+        button.disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        #response-area {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            min-height: 200px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            grid-column: span 2;
+        }
+        .status {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #cccccc;
+        }
+        .status-indicator.active {
+            background-color: #00cc66;
+        }
+        .transcript {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f5f5f5;
+            border-radius: 5px;
+        }
+        #error-message {
+            color: #ff0000;
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #ffebee;
+            border-radius: 5px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="video-container">
+            <div class="status">
+                <div id="webcam-status" class="status-indicator"></div>
+                <h2>Webcam Feed</h2>
+            </div>
+            <video id="webcam" class="video-feed" autoplay playsinline></video>
+        </div>
+        <div class="video-container">
+            <div class="status">
+                <div id="screen-status" class="status-indicator"></div>
+                <h2>Screen Share</h2>
+            </div>
+            <video id="screen" class="video-feed" autoplay playsinline></video>
+        </div>
+        <div class="controls">
+            <button id="webcamBtn">Enable Webcam</button>
+            <button id="screenBtn">Enable Screen Share</button>
+            <button id="audioBtn">Enable Audio</button>
+            <button id="startTalkBtn" disabled>Start Talking</button>
+            <button id="stopBtn" disabled>Stop All</button>
+        </div>
+        <div id="response-area">
+            <div class="status">
+                <div id="ollama-status" class="status-indicator"></div>
+                <h2>AI Response</h2>
+            </div>
+            <div id="error-message"></div>
+            <div class="transcript">
+                <h3>Speech to Text:</h3>
+                <p id="transcript-text">No speech detected yet...</p>
+            </div>
+            <div class="transcript">
+                <h3>AI Response:</h3>
+                <p id="response-text">No response yet...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws;
+        let mediaRecorder;
+        let webcamStream;
+        let screenStream;
+        let isRecording = false;
+        let isWebcamEnabled = false;
+        let isScreenEnabled = false;
+        let isAudioEnabled = false;
+
+        const webcamBtn = document.getElementById('webcamBtn');
+        const screenBtn = document.getElementById('screenBtn');
+        const audioBtn = document.getElementById('audioBtn');
+        const startTalkBtn = document.getElementById('startTalkBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const webcamVideo = document.getElementById('webcam');
+        const screenVideo = document.getElementById('screen');
+        const transcriptText = document.getElementById('transcript-text');
+        const responseText = document.getElementById('response-text');
+        const errorMessage = document.getElementById('error-message');
+        
+        const webcamStatus = document.getElementById('webcam-status');
+        const screenStatus = document.getElementById('screen-status');
+        const ollamaStatus = document.getElementById('ollama-status');
+
+        async function setupWebSocket() {
+ws = new WebSocket(`ws://${window.location.host}/ws`);
+            
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.type === 'response') {
+                    responseText.textContent = data.text;
+                    ollamaStatus.classList.add('active');
+                } else if (data.type === 'transcript') {
+                    transcriptText.textContent = data.text;
+                } else if (data.type === 'error') {
+                    showError(data.message);
+                }
+            };
+
+            ws.onerror = (error) => {
+                showError('WebSocket connection error');
+            };
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+            setTimeout(() => {
+                errorMessage.style.display = 'none';
+            }, 5000);
+        }
+
+        webcamBtn.onclick = async () => {
+            try {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    throw new Error('Your browser does not support webcam access. Please use a modern browser.');
+                }
+                webcamStream = await navigator.mediaDevices.getUserMedia({
+                    video: true,
+                    audio: false
+                });
+                webcamVideo.srcObject = webcamStream;
+                isWebcamEnabled = true;
+                webcamBtn.classList.add('active');
+                webcamStatus.classList.add('active');
+                updateStartButton();
+            } catch (error) {
+                showError('Error accessing webcam: ' + error.message);
+                console.error('Webcam error:', error);
+            }
+        };
+
+        screenBtn.onclick = async () => {
+            try {
+                screenStream = await navigator.mediaDevices.getDisplayMedia({
+                    video: true
+                });
+                screenVideo.srcObject = screenStream;
+                isScreenEnabled = true;
+                screenBtn.classList.add('active');
+                screenStatus.classList.add('active');
+                updateStartButton();
+            } catch (error) {
+                showError('Error accessing screen share: ' + error.message);
+            }
+        };
+
+        audioBtn.onclick = async () => {
+            try {
+                const audioStream = await navigator.mediaDevices.getUserMedia({
+                    audio: true
+                });
+                isAudioEnabled = true;
+                audioBtn.classList.add('active');
+                mediaRecorder = new MediaRecorder(audioStream, {
+                    mimeType: 'audio/webm'
+                });
+                setupAudioRecording();
+                updateStartButton();
+            } catch (error) {
+                showError('Error accessing microphone: ' + error.message);
+            }
+        };
+
+        function setupAudioRecording() {
+            mediaRecorder.ondataavailable = async (event) => {
+                if (event.data.size > 0 && ws.readyState === WebSocket.OPEN) {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        const base64data = reader.result.split(',')[1];
+                        ws.send(JSON.stringify({
+                            type: 'audio',
+                            data: base64data
+                        }));
+                    };
+                    reader.readAsDataURL(event.data);
+                }
+            };
+        }
+
+        function updateStartButton() {
+            startTalkBtn.disabled = !(isWebcamEnabled || isScreenEnabled) || !isAudioEnabled;
+        }
+
+        startTalkBtn.onclick = async () => {
+            await setupWebSocket();
+            
+            isRecording = true;
+            mediaRecorder.start(1000);
+            sendFrames();
+            
+            startTalkBtn.disabled = true;
+            stopBtn.disabled = false;
+            ollamaStatus.classList.remove('active');
+        };
+
+        function sendFrames() {
+            if (!isRecording) return;
+
+            if (isWebcamEnabled) {
+                const webcamCanvas = document.createElement('canvas');
+                webcamCanvas.width = webcamVideo.videoWidth;
+                webcamCanvas.height = webcamVideo.videoHeight;
+                webcamCanvas.getContext('2d').drawImage(webcamVideo, 0, 0);
+                const webcamData = webcamCanvas.toDataURL('image/jpeg');
+                
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({
+                        type: 'webcam',
+                        data: webcamData
+                    }));
+                }
+            }
+
+            if (isScreenEnabled) {
+                const screenCanvas = document.createElement('canvas');
+                screenCanvas.width = screenVideo.videoWidth;
+                screenCanvas.height = screenVideo.videoHeight;
+                screenCanvas.getContext('2d').drawImage(screenVideo, 0, 0);
+                const screenData = screenCanvas.toDataURL('image/jpeg');
+                
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({
+                        type: 'screen',
+                        data: screenData
+                    }));
+                }
+            }
+
+            setTimeout(sendFrames, 1000);
+        }
+
+        stopBtn.onclick = () => {
+            isRecording = false;
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+            }
+            if (ws) {
+                ws.close();
+            }
+            
+            startTalkBtn.disabled = false;
+            stopBtn.disabled = true;
+            ollamaStatus.classList.remove('active');
+        };
+
+        // Initial setup
+        stopBtn.disabled = true;
+        startTalkBtn.disabled = true;
+    </script>
+</body>
+</html>
