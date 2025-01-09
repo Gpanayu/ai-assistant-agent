@@ -18,10 +18,41 @@ h1 {
   padding: 0;
 }
 
-#editor {
-  width: 75%;
+#editorContainer {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
 }
 
-#printState {
+#editor, #output {
+  max-height: calc(25 * 1.5em);
+  overflow-y: auto;
+}
+
+#editor {
+  width: 100%;
+}
+
+#output {
+  background-color: #363535;
+  white-space: pre-line;
+
+  min-height: calc(25 * 1.5em);
+  p {
+    padding: 0;
+    margin: 0;
+  }
+}
+
+.button {
   margin: 10px;
+}
+
+.outputLine {
+  padding-left: 10px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.active {
+  background-color: #4d4b4b;
 }

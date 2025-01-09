@@ -1,11 +1,12 @@
 import { defineConfig } from "vite"
 
 export default defineConfig({
-  plugins: [
-  ],
-  //...
   server: {
-    port: 4200,
-    host: 'localhost',
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8000', // FastAPI server address
+        changeOrigin: true,
+      }
+    }
   },
 });
