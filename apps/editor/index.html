@@ -3,16 +3,26 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <script src="https://unpkg.com/htmx.org@2.0.4"
-      integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+"
-      crossorigin="anonymous"></script>
     <title>Acme</title>
   </head>
   <body>
     <h1>Collaborative Editor</h1>
-    <button class="button" id="run">Run</button>
-    <button class="button" id="clear">Clear</button>
-    <main id="editorContainer">
+    <section >
+      <!-- <form> -->
+      <!--   <input -->
+      <!--       id = "roomCodeInput" -->
+      <!--       name="roomCode" -->
+      <!--       type="text" -->
+      <!--       placeholder="Join Code" -->
+      <!--       autocomplete="off"/> -->
+      <!--   <button id="join">Join</button> -->
+      <!-- </form> -->
+
+      <button class="button" id="run">Run</button>
+      <button class="button" id="clear">Clear</button>
+      <button class="button" id="toggle">Toggle View</button>
+    </section>
+    <main id="editorContainer" class="vertical">
       <div id="editor"></div>
       <div id="output"></div>
     </main>
