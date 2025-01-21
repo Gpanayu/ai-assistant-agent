@@ -41,7 +41,7 @@ export function peerExtension(ws: WebSocket, _version: number) {
               continue
             }
             console.log(change.id, version)
-            const newTransaction = this.view.state.update({ changes: change, userEvent: "pull" })
+            const newTransaction = this.view.state.update({ changes: change })
             this.view.dispatch(newTransaction)
           }
         }
@@ -98,8 +98,10 @@ export function peerExtension(ws: WebSocket, _version: number) {
             this.editOperation.payload = insertText
           }
         })
-        this.version += 1
 
+        this.editOperation.version += 1
+
+        this.version = this.editOperation.version
         console.log(this.version)
 
         this.updateCursor()

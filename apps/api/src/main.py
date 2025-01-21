@@ -68,6 +68,7 @@ class DocumentManager:
             "to": update["range"][1],
             "insert": update["payload"],
             "id": update["id"],
+            "version": update["version"],
         }
         self.pending.append(formatted)
         # print(self.updates)
@@ -81,36 +82,41 @@ class DocumentManager:
             return (self.updates[version:], version)
         return ([], 0)
 
-    def updateDoc(self, operation: str, start: int, end: int, payload: str, id: str):
-        if operation == "insert":
-            if (self.document):
-                print(f"payload vs doc: {payload} {self.document[start:end + 1]}", id)
-                if (self.document[start:end + 1] == payload):
-                    print("already added", id)
-                    return
+    def updateDoc(
+        self, operation: str, start: int, end: int, payload: str, id: str, version: int
+    ):
+        if version <= len(self.updates):
+            print("version mismatch")
+        else:
+            formatted = {
+                "from": start,
+                "to": end,
+                "insert": payload,
+                "id": id,
+                "version": version,
+            }
+            self.updates.append(formatted)
 
-            self.document = self.document[:start] + payload + self.document[end:]
+            if operation == "insert":
+                if self.document:
+                    print(f"payload vs doc: {payload} {self.document[start:end + 1]}", id)
+                    if self.document[start: end + 1] == payload:
+                        print("already added", id)
+                        return
 
-        if operation == "delete":
-            print(f"remove {start} to {end}")
+                self.document = self.document[:start] + payload + self.document[end:]
 
-            if (self.document):
-                print(f"removing from start to end {start}-{end}", id)
-                if (self.document[start:end] == payload):
-                    print("already removed", id)
+            if operation == "delete":
+                print(f"remove {start} to {end}")
 
-            self.document = self.document[:start] + self.document[end:]
+                if self.document:
+                    print(f"removing from start to end {start}-{end}", id)
+                    if self.document[start:end] == payload:
+                        print("already removed", id)
 
-        formatted = {
-            "from": start,
-            "to": end,
-            "insert": payload,
-            "id": id
-        }
-        self.updates.append(formatted)
-        print(self.updates)
+                self.document = self.document[:start] + self.document[end:]
 
-        print(self.document)
+        print(f"doc: {self.document}")
 
     def getDocument(self):
         return self.document
@@ -181,12 +187,14 @@ def event_helper(loaded) -> dict:
 
         while len(documentManager.pending) > 0:
             current_operation = documentManager.popPending()
+            print(current_operation["version"])
             documentManager.updateDoc(
                 current_operation["operation"],
                 current_operation["from"],
                 current_operation["to"],
                 current_operation["insert"],
-                current_operation["id"]
+                current_operation["id"],
+                current_operation["version"],
             )
 
     if loaded["event"] == "pull":

@@ -75,7 +75,7 @@ async function runCode() {
 function appendToHistory(output: string) {
   history.push([new Date(), output])
 
-  const outputDiv = document.querySelector<HTMLDivElement>("#output")
+  const outputDiv = document.querySelector<HTMLDivElement>("#output")!
   outputDiv.innerHTML = ""
 
   for (let i = 0; i < history.length; i++) {
