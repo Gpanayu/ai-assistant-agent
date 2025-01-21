@@ -3,7 +3,7 @@ import { EditorView } from "@codemirror/view"
 import { keymap } from "@codemirror/view"
 import { indentWithTab } from "@codemirror/commands"
 import { python } from "@codemirror/lang-python"
-import { gruvboxDark } from "cm6-theme-gruvbox-dark"
+import { oneDark } from "@codemirror/theme-one-dark"
 import "./assets/styles.css"
 import { peerExtension } from "./plugin"
 
@@ -26,7 +26,7 @@ let { version, doc } = await getDocument()
 
 let mainView = new EditorView({
   doc: doc,
-  extensions: [basicSetup, peerExtension(ws, version), python(), keymap.of([indentWithTab]), gruvboxDark],
+  extensions: [basicSetup, peerExtension(ws, version), python(), keymap.of([indentWithTab]), oneDark],
   parent: document.querySelector<HTMLDivElement>("#editor")!
 })
 
@@ -103,13 +103,13 @@ function appendToHistory(output: string) {
 }
 
 function clearCode() {
-  const outputDiv = document.querySelector<HTMLDivElement>("#output")
+  const outputDiv = document.querySelector<HTMLDivElement>("#output")!
   outputDiv.innerHTML = ""
   history = []
 }
 
 function toggleView() {
-  const container = document.querySelector<HTMLDivElement>("#editorContainer")
+  const container = document.querySelector<HTMLDivElement>("#editorContainer")!
   if (container.className === "vertical") {
     container.className = "horizontal"
   }

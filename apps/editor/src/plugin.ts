@@ -1,4 +1,4 @@
-import { EditorView } from "@codemirror/view"
+import { EditorView, Tooltip } from "@codemirror/view"
 import { ViewUpdate, ViewPlugin } from "@codemirror/view"
 import { ChangeSet } from '@codemirror/state'
 import { collab, getSyncedVersion, receiveUpdates, sendableUpdates, Update } from "@codemirror/collab"
@@ -53,6 +53,7 @@ export function peerExtension(ws: WebSocket, _version: number) {
           event: "pull",
           version: this.version
         }))
+        this.pull()
       }
 
       this.editOperation = {
@@ -67,7 +68,6 @@ export function peerExtension(ws: WebSocket, _version: number) {
       // used for init purposes
       this.updateCursor()
 
-      this.pull()
 
       setInterval(() => this.updateCursor(), 5000)
     }
@@ -118,14 +118,15 @@ export function peerExtension(ws: WebSocket, _version: number) {
     }
 
     pull() {
-      setInterval(() => {
+      // NOTE: may need to tune this a bit better
+      const pullRecursive = () => {
         ws.send(JSON.stringify({
           event: "pull",
           version: this.version
         }))
-      }, 500)
-      // while (!this.done) {
-      // }
+        requestAnimationFrame(pullRecursive)
+      }
+      requestAnimationFrame(pullRecursive)
     }
   })
 
