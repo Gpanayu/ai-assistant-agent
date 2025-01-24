@@ -5,15 +5,19 @@
 
   color-scheme: light dark;
   color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  background-color: var(--main-bg-color);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  --main-bg-color: #21242c;
+  --secondary-bg-color: #2c303a;
+  --active-bg-color: #373c49;
 }
 
-h1 {
+h1, h4 {
   margin: 0;
   padding: 0;
 }
@@ -33,13 +37,16 @@ h1 {
   grid-template-rows: 1fr 1fr;
 }
 
-#editor, #output {
+.editor, #output {
   overflow-y: auto;
 }
 
+.buttons {
+  display: inline-block;
+}
 
 #output {
-  background-color: #363535;
+  background-color: var(--secondary-bg-color);
   white-space: pre-line;
 
   p {
@@ -48,8 +55,49 @@ h1 {
   }
 }
 
-.button {
-  margin: 10px;
+#tabs {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+  margin-bottom: -1px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.tab {
+  padding: 5px 10px;
+  background: var(--secondary-bg-color);
+  font-size: 14px;
+  width: fit-content;
+  display: inline-block;
+  border-radius: 2px;
+}
+
+.tab.active {
+  background-color: var(--active-bg-color);
+}
+
+.tab-pane {
+  display: none;
+}
+
+.tab-pane.active {
+  display: block;
+}
+
+.button-tab {
+  padding: 5px 10px;
+  border-radius: 2px;
+  background: var(--secondary-bg-color);
+  font-size: 14px;
+  width: fit-content;
+  outline: none;
+  border: none;
+}
+
+.button-tab:hover {
+  background: var(--active-bg-color);
 }
 
 .outputLine {
@@ -58,6 +106,12 @@ h1 {
   justify-content: space-between;
 }
 
-.active {
-  background-color: #4d4b4b;
+.outputLine.active {
+  background-color: var(--active-bg-color)
+}
+
+.topContainer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }

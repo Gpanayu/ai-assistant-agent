@@ -22,6 +22,7 @@ app.add_middleware(
 
 class InputBody(BaseModel):
     code: str
+    channel: str
 
 
 class SocketManager:
@@ -32,6 +33,12 @@ class SocketManager:
         await ws.accept()
         ws.id = id
         self.connections.append(ws)
+        if len(self.connections) == 1:
+            """
+            TODO: this would be where we configure the initial code
+            """
+            msg = json.dumps({"event": "initial", "payload": "# Collaborative Editor"})
+            await self.broadcast(msg)
 
     def disconnect(self, ws: WebSocket):
         self.connections.remove(ws)
@@ -40,6 +47,11 @@ class SocketManager:
     async def broadcast(self, msg: str):
         for ws in self.connections:
             await ws.send_text(msg)
+
+    async def direct_message(self, msg: str, id: str):
+        for ws in self.connections:
+            if ws.id == id:
+                await ws.send_text(msg)
 
 
 socketManager = SocketManager()
@@ -53,6 +65,7 @@ async def test(rawCode: InputBody):
     sys.stderr = buffer
 
     # run the code
+    # probably should implement this later: https://restrictedpython.readthedocs.io/en/latest/
     try:
         exec(rawCode.code)
     except Exception as err:
@@ -60,9 +73,16 @@ async def test(rawCode: InputBody):
 
     sys.stdout = sys.__stdout__
 
-    event = {"event": "run", "stdout": buffer.getvalue()}
+    event = {
+        "event": "run",
+        "stdout": buffer.getvalue(),
+        "all": rawCode.channel == "all",
+    }
 
-    await socketManager.broadcast(json.dumps(event))
+    if rawCode.channel == "all":
+        await socketManager.broadcast(json.dumps(event))
+    else:
+        await socketManager.direct_message(json.dumps(event), rawCode.channel)
 
     return Response(content=buffer.getvalue(), media_type="text/plain")
 
@@ -72,7 +92,9 @@ async def websocket_endpoint(websocket: WebSocket, id: str):
     await socketManager.connect(websocket, id)
     try:
         while True:
-            await websocket.receive_text()
+            data = await websocket.receive_text()
+            loaded = json.loads(data)
+            print(loaded["payload"])
 
     except WebSocketDisconnect:
         socketManager.disconnect(websocket)

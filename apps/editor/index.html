@@ -3,27 +3,46 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://kit.fontawesome.com/3efd7c2f05.js" crossorigin="anonymous"></script>
     <title>Acme</title>
   </head>
   <body>
-    <h1>Collaborative Editor</h1>
-    <section >
-      <!-- <form> -->
-      <!--   <input -->
-      <!--       id = "roomCodeInput" -->
-      <!--       name="roomCode" -->
-      <!--       type="text" -->
-      <!--       placeholder="Join Code" -->
-      <!--       autocomplete="off"/> -->
-      <!--   <button id="join">Join</button> -->
-      <!-- </form> -->
+    <div class="topContainer">
+      <h1>Collaborative Editor</h1>
+      <div>
+        <input
+              id = "nameInput"
+              name="nameInput"
+              type="text"
+              placeholder="Name"
+              autocomplete="off"/>
+        <button id="update">Update</button>
+      </div>
+    </div>
+    <ul id="tabs">
+      <div>
+        <li class="tab active" data-tab="0">Collab</li>
+        <li class="tab" data-tab="1">Playground</li>
+      </div>
 
-      <button class="button" id="run">Run</button>
-      <button class="button" id="clear">Clear</button>
-      <button class="button" id="toggle">Toggle View</button>
-    </section>
+      <section class="buttons">
+        <button class="button-tab" id="run">
+          <i class="fa-solid fa-play"></i>
+          Run
+        </button>
+        <button class="button-tab" id="clear">
+          <i class="fa-solid fa-broom"></i>
+          Clear
+        </button>
+        <button class="button-tab" id="toggle">
+          <i class="fa-solid fa-grip"></i>
+          Toggle View
+        </button>
+      </section>
+    </ul>
     <main id="editorContainer" class="vertical">
-      <div id="editor"></div>
+      <div id="editor" class="editor tab-pane active" data-pane="0"></div>
+      <div id="secondary" class="editor tab-pane" data-pane="1"></div>
       <div id="output"></div>
     </main>
     <script type="module" src="./src/main.ts"></script>
