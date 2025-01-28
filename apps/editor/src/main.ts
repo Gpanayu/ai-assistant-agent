@@ -16,12 +16,20 @@ const ws = new WebSocket(`ws://127.0.0.1:8000/ws/${id}`);
 
 ws.addEventListener("open", (_) => {
   console.log('socket opened')
+
+  let payload = {
+    cursor: mainView.state.selection.main.head,
+    doc: ytext.toString(),
+    name: id,
+    timeStamp: Date.now()
+  }
+
+  ws.send(JSON.stringify({event: "update", payload: payload}))
 })
 
 ws.addEventListener("message", (event) => {
   const data = JSON.parse(event.data)
   if (data["event"] === "run") {
-    console.log(data)
     appendToHistory(data["stdout"], data["all"])
   }
   if (data["event"] === "initial") {
@@ -53,18 +61,20 @@ provider.awareness.setLocalStateField('user', {
   colorLight: color.light
 })
 
-undoManager.on('stack-item-added', event => {
-  event.stackItem.meta.set('cursor-location', mainView.state.selection.main.head)
-  event.stackItem.meta.set('user-id', provider.awareness.getLocalState().user.name)
-  console.log("undoManager fired")
+ydoc.on('update', _ => {
+  console.log('cursor-location', mainView.state.selection.main.head)
+  console.log('user-id', provider.awareness.getLocalState().user.name)
 
   let payload = {
     cursor: mainView.state.selection.main.head,
-    doc: mainView.state.doc.toString(),
-    name: provider.awareness.getLocalState().user.name
+    doc: ytext.toString(),
+    name: provider.awareness.getLocalState().user.name,
+    timeStamp: Date.now()
   }
 
-  ws.send(JSON.stringify({event: "update", payload: payload}))
+  if (ws.readyState == ws.OPEN) {
+    ws.send(JSON.stringify({event: "update", payload: payload}))
+  }
 })
 
 

@@ -37,12 +37,11 @@ class SocketManager:
             """
             TODO: this would be where we configure the initial code
             """
-            msg = json.dumps({"event": "initial", "payload": "# Collaborative Editor"})
+            msg = json.dumps({"event": "initial", "payload": ""})
             await self.broadcast(msg)
 
     def disconnect(self, ws: WebSocket):
         self.connections.remove(ws)
-        print(self.connections)
 
     async def broadcast(self, msg: str):
         for ws in self.connections:
@@ -87,14 +86,22 @@ async def test(rawCode: InputBody):
     return Response(content=buffer.getvalue(), media_type="text/plain")
 
 
+msgs = []
+state = ""
+
+
 @app.websocket("/ws/{id}")
 async def websocket_endpoint(websocket: WebSocket, id: str):
     await socketManager.connect(websocket, id)
+    global state
     try:
         while True:
             data = await websocket.receive_text()
             loaded = json.loads(data)
-            print(loaded["payload"])
+            msgs.append(loaded["payload"])
+            print("\n")
+            print(msgs)
+            # TODO: push to gpt
 
     except WebSocketDisconnect:
         socketManager.disconnect(websocket)
