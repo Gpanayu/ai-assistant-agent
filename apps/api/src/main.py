@@ -1,7 +1,12 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.templating import Jinja2Templates
+from fastapi.responses import HTMLResponse
 from fastapi import Response
-
+from typing import Dict, Callable
+from deepgram import Deepgram
+from dotenv import load_dotenv
+import os
 from pydantic import BaseModel
 
 import sys
@@ -55,6 +60,51 @@ class SocketManager:
 
 socketManager = SocketManager()
 
+class AudioProcessor:
+    def __init__(self):
+        self.dg_client = Deepgram(os.getenv('DEEPGRAM_API_KEY'))
+        self.templates = Jinja2Templates(directory="templates")
+        self.socket = None
+
+
+    async def process_audio(self, fast_socket: WebSocket):
+        async def get_transcript(data: Dict) -> None:
+            if 'channel' in data:
+                transcript = data['channel']['alternatives'][0]['transcript']
+                print(data)
+                if transcript:
+                    await fast_socket.send_text(transcript)
+
+        self.socket = await self.connect_to_deepgram(get_transcript)
+    
+    async def connect_to_deepgram(self, transcript_received_handler: Callable[[Dict], None]):
+        try:
+            socket = await self.dg_client.transcription.live({'punctuate': True, 'interim_results': False, 'diarize': True})
+            socket.registerHandler(socket.event.CLOSE, lambda c: print(f'Connection closed with code {c}.'))
+            socket.registerHandler(socket.event.TRANSCRIPT_RECEIVED, transcript_received_handler)
+            return socket
+        except Exception as e:
+            raise Exception(f'Could not open socket: {e}')
+
+audio_processor = AudioProcessor()
+
+@app.websocket("/listen")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    try:
+        await audio_processor.process_audio(websocket)
+        while True:
+            data = await websocket.receive_bytes()
+            if audio_processor.socket:
+                audio_processor.socket.send(data)
+    except Exception as e:
+        raise Exception(f'Could not process audio: {e}')
+    finally:
+        await websocket.close()
+
+@app.get("/", response_class=HTMLResponse)
+def get(request: Request):
+    return audio_processor.templates.TemplateResponse("index.html", {"request": request})
 
 @app.post("/test")
 async def test(rawCode: InputBody):
