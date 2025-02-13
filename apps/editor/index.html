@@ -8,7 +8,10 @@
   </head>
   <body>
     <div class="topContainer">
-      <h1>Collaborative Editor</h1>
+      <div>
+        <h1>Collaborative Editor</h1>
+        <span id="id">id: </span>
+      </div>
       <div>
         <input
               id = "nameInput"
@@ -44,6 +47,20 @@
       <div id="editor" class="editor tab-pane active" data-pane="0"></div>
       <div id="secondary" class="editor tab-pane" data-pane="1"></div>
       <div id="output"></div>
+      <div id="notification" class="notification">
+        <div>
+          <span id="content">Jason, Peter trade tasks</span>
+          <button>
+            Why?
+          </button>
+        </div>
+        <button class="close">
+          <i class="fa-regular fa-circle-check"></i>
+        </button>
+        <button class="close">
+          <i class="fa-regular fa-circle-xmark"></i>
+        </button>
+      </div>
     </main>
     <script type="module" src="./src/main.ts"></script>
   </body>

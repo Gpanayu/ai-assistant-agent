@@ -8,11 +8,17 @@ import "./assets/styles.css"
 
 import * as Y from 'yjs'
 import { yCollab } from 'y-codemirror.next'
-import { WebrtcProvider } from 'y-webrtc'
 import { YText } from "yjs/dist/src/internals"
 
+import { generateId } from 'zoo-ids';
+import { WebrtcProvider } from "y-webrtc"
+
 const id = Math.floor(Math.random() * 1e9).toString(36)
-const ws = new WebSocket(`ws://127.0.0.1:8000/ws/${id}`);
+const animalId = generateId(id, {numAdjectives: 1, caseStyle: 'titlecase'})
+
+const ws = new WebSocket(`ws://127.0.0.1:8000/ws/${animalId}`);
+
+document.querySelector<HTMLSpanElement>("#id")!.innerText += animalId
 
 ws.addEventListener("open", (_) => {
   console.log('socket opened')
@@ -20,11 +26,11 @@ ws.addEventListener("open", (_) => {
   let payload = {
     cursor: mainView.state.selection.main.head,
     doc: ytext.toString(),
-    name: id,
+    name: animalId,
     timeStamp: Date.now()
   }
 
-  ws.send(JSON.stringify({event: "update", payload: payload}))
+  ws.send(JSON.stringify({event: "updateMaster", payload: payload}))
 })
 
 ws.addEventListener("message", (event) => {
@@ -34,6 +40,11 @@ ws.addEventListener("message", (event) => {
   }
   if (data["event"] === "initial") {
     ytext.insert(0, data["payload"])
+  }
+  if(data["event"] === "notification") {
+    console.log("hi")
+    document.querySelector<HTMLSpanElement>("#notification")!.classList.add("active")
+    document.querySelector<HTMLSpanElement>("#content")!.innerText = data["payload"]
   }
 })
 
@@ -51,12 +62,43 @@ export const userColors = [
 export const color = userColors[Math.floor(Math.random() * 8) % userColors.length]
 
 const ydoc = new Y.Doc()
-const provider = new WebrtcProvider('prime-collab-room', ydoc)
+const provider = new WebrtcProvider('prime-collab-room-demo', ydoc, {
+  signaling: ['wss://prime-lab.cs.vt.edu:4444'],
+  peerOpts: {
+    config: {
+      iceServers: [
+         {
+           urls: "stun:stun.relay.metered.ca:80",
+         },
+         {
+           urls: "turn:global.relay.metered.ca:80",
+           username: "a6cd4590c56d422090feaf27",
+           credential: "99XwNU33NXuWP2eZ",
+         },
+         {
+           urls: "turn:global.relay.metered.ca:80?transport=tcp",
+             username: "a6cd4590c56d422090feaf27",
+           credential: "99XwNU33NXuWP2eZ",
+         },
+         {
+           urls: "turn:global.relay.metered.ca:443",
+           username: "a6cd4590c56d422090feaf27",
+           credential: "99XwNU33NXuWP2eZ",
+         },
+         {
+           urls: "turns:global.relay.metered.ca:443?transport=tcp",
+           username: "a6cd4590c56d422090feaf27",
+           credential: "99XwNU33NXuWP2eZ",
+         },
+      ],
+    }
+  }
+})
 const ytext = ydoc.getText('codemirror')
 const undoManager = new Y.UndoManager(ytext)
 
 provider.awareness.setLocalStateField('user', {
-  name: id,
+  name: animalId,
   color: color.color,
   colorLight: color.light
 })
@@ -73,7 +115,7 @@ ydoc.on('update', _ => {
   }
 
   if (ws.readyState == ws.OPEN) {
-    ws.send(JSON.stringify({event: "update", payload: payload}))
+    ws.send(JSON.stringify({event: "updateMaster", payload: payload}))
   }
 })
 
@@ -103,6 +145,7 @@ document.querySelector("#run")!.addEventListener("click", runCode);
 document.querySelector("#clear")!.addEventListener("click", clearCode);
 document.querySelector("#toggle")!.addEventListener("click", toggleView);
 document.querySelector("#update")!.addEventListener("click", updateName);
+document.querySelector(".close")!.addEventListener("click", closeNotif)
 
 /*
 +------------------+
@@ -136,7 +179,7 @@ async function runCode() {
     code = ytext
   }
   else {
-    channel = id
+    channel = animalId
     code = secondaryView.state.doc.toString()
   }
   await fetch("http://127.0.0.1:8000/test", {
@@ -211,4 +254,8 @@ function updateName() {
     color: color.color,
     colorLight: color.light
   })
+}
+
+function closeNotif() {
+  document.querySelector<HTMLSpanElement>("#notification")!.classList.remove("active")
 }

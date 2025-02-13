@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<head>
+  <!-- <link rel="stylesheet" href="https://cdn.simplecss.org/simple-v1.css"> -->
+  <style>
+    ul > li {
+      display:inline-block;
+    }
+    #users {
+      list-style-type: none;
+      padding: 0;
+      margin: 0;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Dashboard</h1>
+  <form id="notificationForm" style="position:absolute;">
+    <ul id="users">
+    {% for items in connections %}
+      <li>
+        <label>
+          <input name="selected_users[]" type="checkbox" value="{{ items.id }}">
+          <span>{{items.id}}</span>
+        </label>
+      </li>
+    {% endfor %}
+    </ul>
+    <select name="notification_type" required>
+      <option selected="selected" value="1" disabled>Notification Options</option>
+      <option value="2">Trade Tasks</option>
+      <option value="3">Refocus Effort to Easier</option>
+      <option value="4">Refocus Effort to Harder</option>
+      <option value="5">Check-in with Teammates</option>
+    </select>
+    <button type="submit">Send Notification</button>
+  </form>
+  <script>
+    document.getElementById("notificationForm").addEventListener("submit", function(event) {
+      event.preventDefault();
+
+      const formData = new FormData(this);
+
+      // Convert checkboxes into an array
+      const selectedUsers = [];
+      document.querySelectorAll('input[name="selected_users[]"]:checked').forEach((checkbox) => {
+          selectedUsers.push(checkbox.value);
+      });
+
+      const data = {
+          selected_users: selectedUsers,  // Send as an array
+          notification_type: formData.get("notification_type")
+      };
+
+      fetch("/notify", {  // Change to your actual backend URL
+        method: "POST",
+        body: JSON.stringify(data)
+      })
+        .then(response => response.json())
+        .then(data => {
+          console.log("Success:", data);
+          alert("sent")
+        })
+        .catch(error => {
+          console.error("Error:", error);
+        });
+    });
+  </script>
+</body>

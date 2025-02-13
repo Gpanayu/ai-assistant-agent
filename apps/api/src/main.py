@@ -4,7 +4,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from fastapi import Response
 from typing import Dict, Callable
-from deepgram import Deepgram
+from deepgram import DeepgramClient
 from dotenv import load_dotenv
 import os
 from pydantic import BaseModel
@@ -13,6 +13,8 @@ import sys
 import io
 
 import json
+
+load_dotenv()
 
 app = FastAPI()
 
@@ -60,36 +62,47 @@ class SocketManager:
 
 socketManager = SocketManager()
 
+templates = Jinja2Templates(directory="templates")
+
+
 class AudioProcessor:
     def __init__(self):
-        self.dg_client = Deepgram(os.getenv('DEEPGRAM_API_KEY'))
-        self.templates = Jinja2Templates(directory="templates")
+        self.dg_client = DeepgramClient(os.getenv("DEEPGRAM_API_KEY"))
         self.socket = None
-
 
     async def process_audio(self, fast_socket: WebSocket):
         async def get_transcript(data: Dict) -> None:
-            if 'channel' in data:
-                transcript = data['channel']['alternatives'][0]['transcript']
+            if "channel" in data:
+                transcript = data["channel"]["alternatives"][0]["transcript"]
                 print(data)
                 if transcript:
                     await fast_socket.send_text(transcript)
 
         self.socket = await self.connect_to_deepgram(get_transcript)
-    
-    async def connect_to_deepgram(self, transcript_received_handler: Callable[[Dict], None]):
+
+    async def connect_to_deepgram(
+        self, transcript_received_handler: Callable[[Dict], None]
+    ):
         try:
-            socket = await self.dg_client.transcription.live({'punctuate': True, 'interim_results': False, 'diarize': True})
-            socket.registerHandler(socket.event.CLOSE, lambda c: print(f'Connection closed with code {c}.'))
-            socket.registerHandler(socket.event.TRANSCRIPT_RECEIVED, transcript_received_handler)
+            socket = await self.dg_client.transcription.live(
+                {"punctuate": True, "interim_results": False, "diarize": True}
+            )
+            socket.registerHandler(
+                socket.event.CLOSE, lambda c: print(f"Connection closed with code {c}.")
+            )
+            socket.registerHandler(
+                socket.event.TRANSCRIPT_RECEIVED, transcript_received_handler
+            )
             return socket
         except Exception as e:
-            raise Exception(f'Could not open socket: {e}')
+            raise Exception(f"Could not open socket: {e}")
+
 
 audio_processor = AudioProcessor()
 
+
 @app.websocket("/listen")
-async def websocket_endpoint(websocket: WebSocket):
+async def websocket_listen_endpoint(websocket: WebSocket):
     await websocket.accept()
     try:
         await audio_processor.process_audio(websocket)
@@ -98,13 +111,45 @@ async def websocket_endpoint(websocket: WebSocket):
             if audio_processor.socket:
                 audio_processor.socket.send(data)
     except Exception as e:
-        raise Exception(f'Could not process audio: {e}')
+        raise Exception(f"Could not process audio: {e}")
     finally:
         await websocket.close()
 
+
 @app.get("/", response_class=HTMLResponse)
 def get(request: Request):
-    return audio_processor.templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse("index.html", {"request": request})
+
+
+@app.get("/dash", response_class=HTMLResponse)
+def dashboard(request: Request):
+    return templates.TemplateResponse(
+        "dash.html", {"request": request, "connections": socketManager.connections}
+    )
+
+
+@app.post("/notify")
+async def push_notification(request: Request):
+    data = await request.json()
+    print(data["notification_type"])
+    notif_msg = ""
+    users = data["selected_users"]
+    notif_type = data["notification_type"]
+
+    if notif_type == "2":
+        notif_msg = f"{users} trade tasks"
+    if notif_type == "3":
+        notif_msg = f"{users} refocus your effort to an easier task"
+    if notif_type == "4":
+        notif_msg = f"{users} refocus your effort to a harder task"
+    if notif_type == "4":
+        notif_msg = f"{users} check in with your teammates"
+
+    event = {"event": "notification", "payload": notif_msg}
+
+    for i in users:
+        await socketManager.direct_message(json.dumps(event), i)
+
 
 @app.post("/test")
 async def test(rawCode: InputBody):
@@ -141,7 +186,7 @@ state = ""
 
 
 @app.websocket("/ws/{id}")
-async def websocket_endpoint(websocket: WebSocket, id: str):
+async def websocket_text_endpoint(websocket: WebSocket, id: str):
     await socketManager.connect(websocket, id)
     global state
     try:
@@ -149,9 +194,9 @@ async def websocket_endpoint(websocket: WebSocket, id: str):
             data = await websocket.receive_text()
             loaded = json.loads(data)
             msgs.append(loaded["payload"])
-            print("\n")
-            print(msgs)
-            # TODO: push to gpt
+            if loaded["payload"]["doc"] != state:
+                state = loaded["payload"]["doc"]
+            print(state)
 
     except WebSocketDisconnect:
         socketManager.disconnect(websocket)
