@@ -38,14 +38,16 @@ class SocketManager:
 
     async def connect(self, ws: WebSocket, id: int):
         await ws.accept()
+        global state
         ws.id = id
         self.connections.append(ws)
-        if len(self.connections) == 1:
-            """
-            TODO: this would be where we configure the initial code
-            """
-            msg = json.dumps({"event": "initial", "payload": ""})
-            await self.broadcast(msg)
+        conns = [conn for conn in self.connections if conn.id != "control"]
+        if len(conns) == 1:
+            with open('study_problem_blank.py', 'r') as file:
+                code = file.read()
+                state = code
+                msg = json.dumps({"event": "initial", "payload": code})
+                await self.broadcast(msg)
 
     def disconnect(self, ws: WebSocket):
         self.connections.remove(ws)
@@ -124,7 +126,7 @@ def get(request: Request):
 @app.get("/dash", response_class=HTMLResponse)
 def dashboard(request: Request):
     return templates.TemplateResponse(
-        "dash.html", {"request": request, "connections": socketManager.connections, "state": state, "history": history}
+        "dash.html", {"request": request, "connections": socketManager.connections}
     )
 
 
@@ -135,6 +137,7 @@ async def push_notification(request: Request):
     notif_msg = ""
     users = data["selected_users"]
     notif_type = data["notification_type"]
+    print(notif_type)
 
     if notif_type == "2":
         notif_msg = f"{users} trade tasks"
@@ -142,7 +145,7 @@ async def push_notification(request: Request):
         notif_msg = f"{users} refocus your effort to an easier task"
     if notif_type == "4":
         notif_msg = f"{users} refocus your effort to a harder task"
-    if notif_type == "4":
+    if notif_type == "5":
         notif_msg = f"{users} check in with your teammates"
 
     event = {"event": "notification", "payload": notif_msg}
@@ -161,7 +164,7 @@ async def test(rawCode: InputBody):
     # run the code
     # probably should implement this later: https://restrictedpython.readthedocs.io/en/latest/
     try:
-        exec(rawCode.code)
+        exec(rawCode.code, {"__builtins__": __builtins__})
     except Exception as err:
         print(err)
 
@@ -183,8 +186,8 @@ async def test(rawCode: InputBody):
 
 msgs = []
 state = ""
-history=[]
 cursor_positions = {}
+
 
 @app.websocket("/ws/{id}")
 async def websocket_text_endpoint(websocket: WebSocket, id: str):
@@ -198,29 +201,12 @@ async def websocket_text_endpoint(websocket: WebSocket, id: str):
             if loaded["payload"]["doc"] != state:
                 state = loaded["payload"]["doc"]
                 cursor_positions[id] = loaded["payload"]["cursor"]
-                history.append({"doc": state, "user": id})
                 event = {
                     "event": "document_update",
-                    "payload": {"doc": state, "user": id, "cursor_positions": cursor_positions, "history": history},
+                    "payload": {"doc": state, "user": id},
                 }
                 await socketManager.broadcast(json.dumps(event))
-            print("state:",state,"cursor_positions:",cursor_positions)
 
     except WebSocketDisconnect:
         socketManager.disconnect(websocket)
         del cursor_positions[id]
-
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    try:
-        while True:
-            event = {
-                "event": "document_update",
-                "state": state,
-                "history": history,
-                "cursor_positions": cursor_positions
-            }
-            await websocket.send_text(json.dumps(event))  
-    except WebSocketDisconnect:
-        await websocket.close()

@@ -7,8 +7,9 @@
       border: 1px solid #ccc;
       background: #f8f8f8;
       font-family: monospace;
-      min-height: 200px;
       white-space: pre-wrap;
+      max-height: 500px;
+      overflow: scroll;
     }
 
     .cursor {
@@ -58,37 +59,34 @@
   <br><br>
   <h2>Live Document Editor</h2>
   <div id="editor-container">
-    <div id="document-state"></div>
-    <div id="cursor-container"></div>
+    <p id="document-state"></p>
+    <!-- <div id="cursor-container"></div> -->
   </div>
 
   <script>
-    document.addEventListener("DOMContentLoaded", function () {
-        const ws = new WebSocket("ws://localhost:8000/ws");
-        const documentState = document.getElementById("document-state");
-        const cursorContainer = document.getElementById("cursor-container");
+    const ws = new WebSocket("ws://localhost:8000/ws/control");
+    const documentState = document.getElementById("document-state");
+    const cursorContainer = document.getElementById("cursor-container");
 
-        ws.onmessage = function (event) {
-            const data = JSON.parse(event.data);
-            if (data.event === "document_update") {
-              requestAnimationFrame(() => {
-                documentState.innerText = data.state;
-                  });
+    ws.onmessage = function (event) {
+      const data = JSON.parse(event.data);
+      console.log(data)
+      if (data["event"] === "document_update") {
+        documentState.innerText = data["payload"]["doc"];
+        //cursorContainer.innerHTML = "";
 
-                // Clear old cursor positions
-                cursorContainer.innerHTML = "";
+        /*
+        Object.entries(data["payload"]["cursor_positions"]).forEach(([userId, cursorPos]) => {
+          const cursor = document.createElement("div");
+          cursor.className = "cursor";
+          cursor.textContent = ` ${userId}`;
+          cursor.style.left = cursorPos * 10 + "px"; // Adjust scale if needed
+          cursorContainer.appendChild(cursor);
+        });
+        */
+      }
+    }
 
-                // Display cursors
-                Object.entries(data.cursor_positions).forEach(([userId, cursorPos]) => {
-                    const cursor = document.createElement("div");
-                    cursor.className = "cursor";
-                    cursor.textContent = ` ${userId}`;
-                    cursor.style.left = cursorPos * 10 + "px"; // Adjust scale if needed
-                    cursorContainer.appendChild(cursor);
-                });
-            }
-        };
-    });
 
     document.getElementById("notificationForm").addEventListener("submit", function(event) {
         event.preventDefault();
