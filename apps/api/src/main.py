@@ -124,7 +124,7 @@ def get(request: Request):
 @app.get("/dash", response_class=HTMLResponse)
 def dashboard(request: Request):
     return templates.TemplateResponse(
-        "dash.html", {"request": request, "connections": socketManager.connections}
+        "dash.html", {"request": request, "connections": socketManager.connections, "state": state, "history": history}
     )
 
 
@@ -183,7 +183,8 @@ async def test(rawCode: InputBody):
 
 msgs = []
 state = ""
-
+history=[]
+cursor_positions = {}
 
 @app.websocket("/ws/{id}")
 async def websocket_text_endpoint(websocket: WebSocket, id: str):
@@ -196,7 +197,30 @@ async def websocket_text_endpoint(websocket: WebSocket, id: str):
             msgs.append(loaded["payload"])
             if loaded["payload"]["doc"] != state:
                 state = loaded["payload"]["doc"]
-            print(state)
+                cursor_positions[id] = loaded["payload"]["cursor"]
+                history.append({"doc": state, "user": id})
+                event = {
+                    "event": "document_update",
+                    "payload": {"doc": state, "user": id, "cursor_positions": cursor_positions, "history": history},
+                }
+                await socketManager.broadcast(json.dumps(event))
+            print("state:",state,"cursor_positions:",cursor_positions)
 
     except WebSocketDisconnect:
         socketManager.disconnect(websocket)
+        del cursor_positions[id]
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    try:
+        while True:
+            event = {
+                "event": "document_update",
+                "state": state,
+                "history": history,
+                "cursor_positions": cursor_positions
+            }
+            await websocket.send_text(json.dumps(event))  
+    except WebSocketDisconnect:
+        await websocket.close()

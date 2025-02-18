@@ -1,9 +1,27 @@
 <!DOCTYPE html>
 <head>
-  <!-- <link rel="stylesheet" href="https://cdn.simplecss.org/simple-v1.css"> -->
   <style>
+    #editor-container {
+      position: relative;
+      padding: 20px;
+      border: 1px solid #ccc;
+      background: #f8f8f8;
+      font-family: monospace;
+      min-height: 200px;
+      white-space: pre-wrap;
+    }
+
+    .cursor {
+      position: absolute;
+      background: yellow;
+      padding: 2px 5px;
+      border-radius: 3px;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
     ul > li {
-      display:inline-block;
+      display: inline-block;
     }
     #users {
       list-style-type: none;
@@ -15,16 +33,17 @@
 
 <body>
   <h1>Dashboard</h1>
+
   <form id="notificationForm" style="position:absolute;">
     <ul id="users">
-    {% for items in connections %}
-      <li>
-        <label>
-          <input name="selected_users[]" type="checkbox" value="{{ items.id }}">
-          <span>{{items.id}}</span>
-        </label>
-      </li>
-    {% endfor %}
+      {% for items in connections %}
+        <li>
+          <label>
+            <input name="selected_users[]" type="checkbox" value="{{ items.id }}">
+            <span>{{items.id}}</span>
+          </label>
+        </li>
+      {% endfor %}
     </ul>
     <select name="notification_type" required>
       <option selected="selected" value="1" disabled>Notification Options</option>
@@ -35,34 +54,70 @@
     </select>
     <button type="submit">Send Notification</button>
   </form>
+
+  <br><br>
+  <h2>Live Document Editor</h2>
+  <div id="editor-container">
+    <div id="document-state"></div>
+    <div id="cursor-container"></div>
+  </div>
+
   <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const ws = new WebSocket("ws://localhost:8000/ws");
+        const documentState = document.getElementById("document-state");
+        const cursorContainer = document.getElementById("cursor-container");
+
+        ws.onmessage = function (event) {
+            const data = JSON.parse(event.data);
+            if (data.event === "document_update") {
+              requestAnimationFrame(() => {
+                documentState.innerText = data.state;
+                  });
+
+                // Clear old cursor positions
+                cursorContainer.innerHTML = "";
+
+                // Display cursors
+                Object.entries(data.cursor_positions).forEach(([userId, cursorPos]) => {
+                    const cursor = document.createElement("div");
+                    cursor.className = "cursor";
+                    cursor.textContent = ` ${userId}`;
+                    cursor.style.left = cursorPos * 10 + "px"; // Adjust scale if needed
+                    cursorContainer.appendChild(cursor);
+                });
+            }
+        };
+    });
+
     document.getElementById("notificationForm").addEventListener("submit", function(event) {
-      event.preventDefault();
+        event.preventDefault();
 
-      const formData = new FormData(this);
+        const formData = new FormData(this);
 
-      // Convert checkboxes into an array
-      const selectedUsers = [];
-      document.querySelectorAll('input[name="selected_users[]"]:checked').forEach((checkbox) => {
-          selectedUsers.push(checkbox.value);
-      });
+        // Convert checkboxes into an array
+        const selectedUsers = [];
+        document.querySelectorAll('input[name="selected_users[]"]:checked').forEach((checkbox) => {
+            selectedUsers.push(checkbox.value);
+        });
 
-      const data = {
-          selected_users: selectedUsers,  // Send as an array
-          notification_type: formData.get("notification_type")
-      };
+        const data = {
+            selected_users: selectedUsers,
+            notification_type: formData.get("notification_type")
+        };
 
-      fetch("/notify", {  // Change to your actual backend URL
-        method: "POST",
-        body: JSON.stringify(data)
-      })
+        fetch("/notify", {
+            method: "POST",
+            body: JSON.stringify(data),
+            headers: { "Content-Type": "application/json" }
+        })
         .then(response => response.json())
         .then(data => {
-          console.log("Success:", data);
-          alert("sent")
+            console.log("Success:", data);
+            alert("Notification sent!");
         })
         .catch(error => {
-          console.error("Error:", error);
+            console.error("Error:", error);
         });
     });
   </script>
