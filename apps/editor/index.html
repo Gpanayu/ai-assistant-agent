@@ -4,7 +4,44 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <script src="https://kit.fontawesome.com/3efd7c2f05.js" crossorigin="anonymous"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://unpkg.com/dagre-d3@0.6.4/dist/dagre-d3.min.js"></script>
+    <script src="https://unpkg.com/@popperjs/core@2/dist/umd/popper.min.js"></script>
+    <script src="https://unpkg.com/tippy.js@6/dist/tippy-bundle.umd.js"></script>
     <title>Acme</title>
+
+    <style>
+      .node rect {
+        stroke: #999;
+        fill: #fff;
+        rx: 4;
+        ry: 4;
+        cursor: pointer;
+        transition: fill 0.3s ease;
+      }
+      .node.checked1 rect {
+        fill: #FFFF66;
+        stroke: #9ea30d;
+      }
+      .node.checked2 rect {
+        fill: #a3e635;
+        stroke: #65a30d;
+      }
+      .edgePath path {
+        stroke: #999;
+        fill: none;
+        stroke-width: 1.5px;
+      }
+      text {
+        font-family: sans-serif;
+        font-size: 14px;
+        pointer-events: none;
+      }
+      svg {
+        width: 100%;
+        height: 100vh;
+      }
+    </style>
   </head>
   <body>
     <div class="topContainer">
@@ -46,7 +83,10 @@
     <main id="editorContainer" class="vertical">
       <div id="editor" class="editor tab-pane active" data-pane="0"></div>
       <div id="secondary" class="editor tab-pane" data-pane="1"></div>
-      <div id="output"></div>
+      <div id="split" class="split-v">
+        <div id="output"></div>
+        <svg id="smm"></svg>
+      </div>
       <div id="notification" class="notification">
         <div>
           <span id="content">Jason, Peter trade tasks</span>
@@ -65,5 +105,6 @@
       </div>
     </main>
     <script type="module" src="./src/main.ts"></script>
+    <script type="module" src="./src/smm.js"></script>
   </body>
 </html>

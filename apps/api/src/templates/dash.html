@@ -59,7 +59,7 @@
   <br><br>
   <h2>Live Document Editor</h2>
   <div id="editor-container">
-    <p id="document-state"></p>
+    <div id="document-state"></div>
     <!-- <div id="cursor-container"></div> -->
   </div>
 
@@ -70,7 +70,6 @@
 
     ws.onmessage = function (event) {
       const data = JSON.parse(event.data);
-      console.log(data)
       if (data["event"] === "document_update") {
         documentState.innerText = data["payload"]["doc"];
         //cursorContainer.innerHTML = "";

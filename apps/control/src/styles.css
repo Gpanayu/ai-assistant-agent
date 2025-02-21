@@ -1,0 +1,18 @@
+/* You can add global styles to this file, and also import other style files */
+
+#editors {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  height: 85vh;
+  overflow-y: scroll;
+}
+
+.view{
+  display: grid;
+  height: 100%;
+  overflow-y: scroll;
+}
+
+h1 {
+  color: blue
+}

@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from fastapi import Response
+from fastapi.staticfiles import StaticFiles
 from typing import Dict, Callable
 from deepgram import DeepgramClient
 from dotenv import load_dotenv
@@ -38,16 +39,17 @@ class SocketManager:
 
     async def connect(self, ws: WebSocket, id: int):
         await ws.accept()
-        global state
         ws.id = id
         self.connections.append(ws)
+        global state
         conns = [conn for conn in self.connections if conn.id != "control"]
-        if len(conns) == 1:
-            with open('study_problem_blank.py', 'r') as file:
+        if len(conns) == 1 and ws.id != "control":
+            with open("study_problem_blank.py", "r") as file:
                 code = file.read()
-                state = code
-                msg = json.dumps({"event": "initial", "payload": code})
-                await self.broadcast(msg)
+                print(state)
+                if state == "":
+                    msg = json.dumps({"event": "initial", "payload": {"doc": code}})
+                    await self.broadcast(msg)
 
     def disconnect(self, ws: WebSocket):
         self.connections.remove(ws)
@@ -60,11 +62,6 @@ class SocketManager:
         for ws in self.connections:
             if ws.id == id:
                 await ws.send_text(msg)
-
-
-socketManager = SocketManager()
-
-templates = Jinja2Templates(directory="templates")
 
 
 class AudioProcessor:
@@ -100,7 +97,52 @@ class AudioProcessor:
             raise Exception(f"Could not open socket: {e}")
 
 
+class GraphManager:
+    def __init__(self):
+        self.graph = {
+            "Restaurant": 0,
+            "Customer": 0,
+            "view_menu": 0,
+            "create_order": 0,
+            "clear_order": 0,
+            "view_order_summary": 0,
+            "add_to_order": 0,
+            "remove_from_order": 0,
+            "calculate_order_cost": 0,
+            "get_receipt": 0,
+            "inventory_helper": 0,
+            "cook_time_helper": 0,
+            "restock_inventory": 0,
+            "cook_order": 0,
+            "view_inventory": 0,
+            "add_to_queue": 0,
+            "average_cook_time": 0,
+        }
+
+    def update_status(self, node_id):
+        self.graph[node_id] = (self.graph[node_id] + 1) % 3
+
+
+class EditorManager:
+    def __init__(self):
+        self.master = ""
+        self.individual = {}
+
+    def update_master(self, state):
+        self.master = state
+
+    def update_individual(self, id, state):
+        self.individual[id] = state
+
+
+socketManager = SocketManager()
+
+templates = Jinja2Templates(directory="templates")
 audio_processor = AudioProcessor()
+
+graph_manager = GraphManager()
+
+editor_manager = EditorManager()
 
 
 @app.websocket("/listen")
@@ -188,6 +230,8 @@ msgs = []
 state = ""
 cursor_positions = {}
 
+individual_editors = {}
+
 
 @app.websocket("/ws/{id}")
 async def websocket_text_endpoint(websocket: WebSocket, id: str):
@@ -197,14 +241,33 @@ async def websocket_text_endpoint(websocket: WebSocket, id: str):
         while True:
             data = await websocket.receive_text()
             loaded = json.loads(data)
-            msgs.append(loaded["payload"])
-            if loaded["payload"]["doc"] != state:
-                state = loaded["payload"]["doc"]
-                cursor_positions[id] = loaded["payload"]["cursor"]
+            if loaded["event"] == "updateMaster":
+                msgs.append(loaded["payload"])
+                print(loaded["payload"]["doc"] != state)
+
+                if loaded["payload"]["doc"] != state:
+                    state = loaded["payload"]["doc"]
+                    cursor_positions[id] = loaded["payload"]["cursor"]
+                    event = {
+                        "event": "document_update",
+                        "payload": {"doc": state, "user": id, "cursors": cursor_positions},
+                    }
+                    await socketManager.broadcast(json.dumps(event))
+
+            if loaded["event"] == "updatePlayground":
+                editor_manager.update_individual(id, loaded["payload"]["doc"])
                 event = {
-                    "event": "document_update",
-                    "payload": {"doc": state, "user": id},
-                }
+                        "event": "monitorPlayground",
+                        "payload": {"editors": editor_manager.individual},
+                        }
+                await socketManager.broadcast(json.dumps(event))
+
+            if loaded["event"] == "updateNode":
+                graph_manager.update_status(loaded["payload"]["node"])
+                event = {
+                        "event": "updateGraph",
+                        "payload": {"graph": graph_manager.graph},
+                        }
                 await socketManager.broadcast(json.dumps(event))
 
     except WebSocketDisconnect:

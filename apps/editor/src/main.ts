@@ -13,9 +13,13 @@ import { YText } from "yjs/dist/src/internals"
 import { generateId } from 'zoo-ids';
 import { WebrtcProvider } from "y-webrtc"
 
+import { extension } from "./extension"
+
 const id = Math.floor(Math.random() * 1e9).toString(36)
 const animalId = generateId(id, {numAdjectives: 1, caseStyle: 'titlecase'})
+localStorage.setItem("id", animalId)
 
+// TODO: update for wss
 const ws = new WebSocket(`ws://127.0.0.1:8000/ws/${animalId}`);
 
 document.querySelector<HTMLSpanElement>("#id")!.innerText += animalId
@@ -39,14 +43,17 @@ ws.addEventListener("message", (event) => {
     appendToHistory(data["stdout"], data["all"])
   }
   if (data["event"] === "initial") {
-    ytext.insert(0, data["payload"])
+    ytext.insert(0, data["payload"]["doc"])
   }
   if(data["event"] === "notification") {
-    console.log("hi")
     document.querySelector<HTMLSpanElement>("#notification")!.classList.add("active")
     document.querySelector<HTMLSpanElement>("#content")!.innerText = data["payload"]
   }
 })
+
+export function updateGraph(nodeId: string) {
+  ws.send(JSON.stringify({ event: "graphUpdated", payload: { node: nodeId } }))
+}
 
 export const userColors = [
   { color: '#30bced', light: '#30bced33' },
@@ -128,7 +135,7 @@ let mainView = new EditorView({
 
 let secondaryView = new EditorView({
   doc: "# Personal Playground\n# Code will not be shared with others\n\nprint('hello playground')",
-  extensions: [basicSetup, python(), keymap.of([indentWithTab]), oneDark],
+  extensions: [basicSetup, python(), extension(ws), keymap.of([indentWithTab]), oneDark ],
   parent: document.querySelector<HTMLDivElement>("#secondary")!
 })
 
@@ -239,11 +246,14 @@ function clearCode() {
 
 function toggleView() {
   const container = document.querySelector<HTMLDivElement>("#editorContainer")!
+  const split = document.querySelector<HTMLDivElement>("#split")!
   if (container.className === "vertical") {
     container.className = "horizontal"
+    split.className = "split-h"
   }
   else {
     container.className = "vertical"
+    split.className = "split-v"
   }
 }
 

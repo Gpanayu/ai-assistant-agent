@@ -37,12 +37,27 @@ h1, h4 {
   grid-template-rows: 1fr 1fr;
 }
 
-.editor, #output {
+.editor, .split, #output {
   overflow-y: auto;
 }
 
 .buttons {
   display: inline-block;
+}
+
+.split-h {
+  display: grid;
+  grid-template-columns: 50% 50%;
+}
+
+.split-v {
+  display: grid;
+  grid-template-rows: 50% 50%;
+ }
+
+#smm {
+  background-color: var(--secondary-bg-color);
+  height: 100%;
 }
 
 #output {
