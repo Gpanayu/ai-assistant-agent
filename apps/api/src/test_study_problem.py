@@ -5,7 +5,7 @@ import io
 import sys
 import random
 
-from study_problem_sol import Menu, Order, Customer, Restaurant
+from study_problem_blank import Menu, Order, Customer, Restaurant
 
 
 class TestMenu(unittest.TestCase):

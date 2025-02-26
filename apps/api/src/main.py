@@ -4,7 +4,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from fastapi import Response
 from fastapi.staticfiles import StaticFiles
-from typing import Dict, Callable
+from typing import Dict, Callable, List
 from deepgram import DeepgramClient
 from dotenv import load_dotenv
 import os
@@ -31,6 +31,11 @@ app.add_middleware(
 class InputBody(BaseModel):
     code: str
     channel: str
+
+
+class NotifyBody(BaseModel):
+    users: List[str]
+    options: List[str]
 
 
 class SocketManager:
@@ -173,27 +178,40 @@ def dashboard(request: Request):
 
 
 @app.post("/notify")
-async def push_notification(request: Request):
-    data = await request.json()
-    print(data["notification_type"])
-    notif_msg = ""
-    users = data["selected_users"]
-    notif_type = data["notification_type"]
-    print(notif_type)
+async def push_notification(notification: NotifyBody):
+    print(notification)
 
-    if notif_type == "2":
-        notif_msg = f"{users} trade tasks"
-    if notif_type == "3":
-        notif_msg = f"{users} refocus your effort to an easier task"
-    if notif_type == "4":
-        notif_msg = f"{users} refocus your effort to a harder task"
-    if notif_type == "5":
-        notif_msg = f"{users} check in with your teammates"
+    users = notification.users
+    options = notification.options
 
-    event = {"event": "notification", "payload": notif_msg}
+    prompt = "Hey looks like you are finishing up with your task!\nHere are some suggestions:"
+    parsed_options = []
+    for i in options:
+        if i == "1":
+            parsed_options.append("Check in with your teammate")
+        if i == "2":
+            parsed_options.append("Work on task down the tree")
+        if i == "3":
+            parsed_options.append("Work on task on the same level")
+        if i == "4":
+            parsed_options.append("Wait for your team to catch up")
+        if i == "5":
+            parsed_options = []
+            prompt = "Hey looks like you are working on this for a while, would you like help?"
+            parsed_options.append("Yes, help would be nice")
+            parsed_options.append("No, I am good")
 
     for i in users:
-        await socketManager.direct_message(json.dumps(event), i)
+        await socketManager.direct_message(
+            json.dumps(
+                {
+                    "event": "notification",
+                    "payload": {"prompt": prompt, "options": parsed_options},
+                }
+            ),
+            i,
+        )
+    return {"ok": 200}
 
 
 @app.post("/test")
@@ -230,8 +248,6 @@ msgs = []
 state = ""
 cursor_positions = {}
 
-individual_editors = {}
-
 
 @app.websocket("/ws/{id}")
 async def websocket_text_endpoint(websocket: WebSocket, id: str):
@@ -243,33 +259,46 @@ async def websocket_text_endpoint(websocket: WebSocket, id: str):
             loaded = json.loads(data)
             if loaded["event"] == "updateMaster":
                 msgs.append(loaded["payload"])
-                print(loaded["payload"]["doc"] != state)
 
                 if loaded["payload"]["doc"] != state:
                     state = loaded["payload"]["doc"]
                     cursor_positions[id] = loaded["payload"]["cursor"]
                     event = {
                         "event": "document_update",
-                        "payload": {"doc": state, "user": id, "cursors": cursor_positions},
+                        "payload": {
+                            "doc": state,
+                            "user": id,
+                            "cursors": cursor_positions,
+                        },
                     }
                     await socketManager.broadcast(json.dumps(event))
 
             if loaded["event"] == "updatePlayground":
                 editor_manager.update_individual(id, loaded["payload"]["doc"])
                 event = {
-                        "event": "monitorPlayground",
-                        "payload": {"editors": editor_manager.individual},
-                        }
+                    "event": "monitorPlayground",
+                    "payload": {"editors": editor_manager.individual},
+                }
                 await socketManager.broadcast(json.dumps(event))
 
             if loaded["event"] == "updateNode":
                 graph_manager.update_status(loaded["payload"]["node"])
                 event = {
-                        "event": "updateGraph",
-                        "payload": {"graph": graph_manager.graph},
-                        }
+                    "event": "updateGraph",
+                    "payload": {"graph": graph_manager.graph},
+                }
                 await socketManager.broadcast(json.dumps(event))
 
     except WebSocketDisconnect:
         socketManager.disconnect(websocket)
-        del cursor_positions[id]
+
+
+@app.get("/fetch")
+def get_editors():
+    users = [conn.id for conn in socketManager.connections if conn.id != "control"]
+    event = {
+        "users": set(users),
+        "state": state,
+        "individual": editor_manager.individual,
+    }
+    return event

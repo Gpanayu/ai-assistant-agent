@@ -27,6 +27,10 @@ class Customer:
         """
         pass
 
+    def view_menu(self):
+        return "hi"
+
+
     def create_order(self) -> Order:
         """
         Return a Order with:

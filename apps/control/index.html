@@ -15,11 +15,65 @@
   </head>
   <body>
     <h1>Control</h1>
-    <button>Fetch state</button>
+    <button id="fetch">Fetch state</button>
     <div id="editors">
       <div id="view" class="view" ></div>
       <div id="individuals"></div>
     </div>
+    <div id="notification">
+      <h1>Notifications</h1>
+      <div id="participants"></div>
+      <p>Options:</p>
+      <form id="notificationForm">
+        <input type="checkbox" id="checkin" name="option[]" value="1">
+        <label for="checkin">Check-in with Teammate </label><br>
+        <input type="checkbox" id="downtree" name="option[]" value="2">
+        <label for="downtree">Work on Task next on tree</label><br>
+        <input type="checkbox" id="sametree" name="option[]" value="3">
+        <label for="sametree">Work on Task on the same level</label><br>
+        <input type="checkbox" id="wait" name="option[]" value="4">
+        <label for="wait">Wait before continuing</label><br>
+        <input type="checkbox" id="help" name="option[]" value="5">
+        <label for="help">Request Help</label><br>
+        <button type="submit">Submit</button>
+      </form>
+    </div>
+
+    <script>
+
+      document.getElementById("notificationForm").addEventListener("submit", function(event) {
+        event.preventDefault();
+
+        // Convert checkboxes into an array
+        const selectedUsers = [];
+        document.querySelectorAll('input[name="selected_users[]"]:checked').forEach((checkbox) => {
+          selectedUsers.push(checkbox.id);
+        });
+
+        const options = [];
+        document.querySelectorAll('input[name="option[]"]:checked').forEach((checkbox) => {
+          options.push(checkbox.value);
+        });
+
+        const data = {
+          users: selectedUsers,
+          options: options
+        };
+
+        fetch("http://127.0.0.1:8000/notify", {
+          method: "POST",
+          body: JSON.stringify(data),
+          headers: { "Content-Type": "application/json" }
+        })
+          .then(response => response.json())
+          .then(data => {
+            console.log("success")
+          })
+          .catch(err => {
+            console.log(err)
+          })
+      });
+    </script>
 
     <script type="module" src="/src/main.ts"></script>
   </body>

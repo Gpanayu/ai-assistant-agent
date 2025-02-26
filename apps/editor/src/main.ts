@@ -46,8 +46,25 @@ ws.addEventListener("message", (event) => {
     ytext.insert(0, data["payload"]["doc"])
   }
   if(data["event"] === "notification") {
+    console.log("hi")
     document.querySelector<HTMLSpanElement>("#notification")!.classList.add("active")
-    document.querySelector<HTMLSpanElement>("#content")!.innerText = data["payload"]
+    document.querySelector<HTMLSpanElement>("#content")!.innerText = data["payload"]["prompt"]
+    const options = document.querySelector<HTMLSpanElement>("#options")!
+    options.innerHTML = ""
+
+    for (let option of data["payload"]["options"]) {
+      const label = document.createElement("label");
+      label.textContent = option;
+      const opt = document.createElement("input");
+      opt.type = "radio";
+      opt.id = option;
+      opt.name = "option[]";
+      label.prepend(opt);
+      options.append(label);
+      const br = document.createElement("br");
+      options.append(br)
+    }
+
   }
 })
 
@@ -153,7 +170,6 @@ document.querySelector("#clear")!.addEventListener("click", clearCode);
 document.querySelector("#toggle")!.addEventListener("click", toggleView);
 document.querySelector("#update")!.addEventListener("click", updateName);
 document.querySelector("#close")!.addEventListener("click", closeNotif)
-document.querySelector("#accept")!.addEventListener("click", closeNotif)
 
 /*
 +------------------+
@@ -168,6 +184,7 @@ let tabs = document.querySelectorAll(".tab");
 
 for (let i = 0; i < tabs.length; i++) {
   let self = tabs[i];
+  console.log("check")
   self.addEventListener('click', function() {
     let data = this.getAttribute('data-tab');
     document.querySelectorAll('.tab-pane.active')[0].classList.remove('active');

@@ -83,7 +83,11 @@ ws.addEventListener("message", (event) => {
 
         // Create a new div element
         const entryDiv = document.createElement("div");
-        entryDiv.textContent = `${key}: ${value}`;
+        const editor = document.createElement("p");
+        entryDiv.textContent = `${key}`;
+        editor.textContent = `${value}`;
+        editor.style.whiteSpace = "pre-line"
+        entryDiv.appendChild(editor)
 
         // Append to the "individuals" div
         individualsDiv.appendChild(entryDiv);
@@ -100,3 +104,53 @@ view = new EditorView({
   // extensions: [basicSetup, python()],
   parent: document.querySelector<HTMLDivElement>("#view")!
 })
+
+
+document.getElementById("fetch")?.addEventListener("click", getState)
+
+async function getState() {
+  const data = await fetch('http://127.0.0.1:8000/fetch')
+  const thing = await data.json()
+  view?.dispatch({
+    changes: { from: 0, to: view.state.doc.length, insert: thing["state"] }
+  });
+
+  const map = thing["individual"]
+  const individualsDiv = document.getElementById("individuals");
+
+  if (individualsDiv) {
+    individualsDiv.innerHTML = "";
+    for (let key of Object.keys(map)) {
+      const value = map[key];
+
+      // Create a new div element
+      const entryDiv = document.createElement("div");
+      const editor = document.createElement("p");
+      entryDiv.textContent = `${key}`;
+      editor.textContent = `${value}`;
+      editor.style.whiteSpace = "pre-line"
+      entryDiv.appendChild(editor)
+
+      // Append to the "individuals" div
+      individualsDiv.appendChild(entryDiv);
+    }
+  }
+
+  const participants = document.getElementById("participants")
+
+  const users = thing["users"]
+
+  if (participants) {
+    participants.innerHTML = ""
+    for (let key of users) {
+      const label = document.createElement("label");
+      label.textContent = key;
+      const user = document.createElement("input");
+      user.type = "checkbox";
+      user.id = key;
+      user.name = "selected_users[]";
+      label.prepend(user);
+      participants.append(label)
+    }
+  }
+}
