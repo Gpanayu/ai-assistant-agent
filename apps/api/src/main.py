@@ -13,6 +13,8 @@ import subprocess
 import re
 import sys
 import io
+import ast
+from textwrap import dedent
 
 import json
 
@@ -145,37 +147,66 @@ class FunctionReplacer:
         self.main_file = main_file
         self.main_copy_file = main_copy_file
 
+    def replace_whole_file(self, new_code: str):
+        with open(self.main_file, 'w') as f:
+            f.write(new_code)
+        print(f"Replaced {self.main_file} with new code")
+
     def replace_function_in_file(self, function_code: str):
-        function_name_match = re.search(r'def (\w+)', function_code)
-        if not function_name_match:
-            print("Error: Could not determine function name.")
+        function_node = ast.parse(dedent(function_code)).body[0]
+        if not isinstance(function_node, ast.FunctionDef):
+            print("Error: Provided code is not a function definition.")
             return
-        
-        function_name = function_name_match.group(1)
+
+        function_name = function_node.name
         
         with open(self.main_file, 'r') as f:
             content = f.read()
-
-        pattern = rf'^(?P<indent>\s*)def {function_name}\(.*?\):.*?(?=\n(?P=indent)def |\Z)'
+            tree = ast.parse(content)
         
-        match = re.search(pattern, content, flags=re.DOTALL | re.MULTILINE)
-        if match:
-            indent = match.group("indent")  
-            indented_function_code = "\n".join(indent + line if line.strip() else line for line in function_code.split("\n"))
-            
-            new_content = re.sub(pattern, indented_function_code, content, flags=re.DOTALL | re.MULTILINE)
-            
-            with open(self.main_file, 'w') as f:
-                f.write(new_content)
-            
-            print(f"Replaced function '{function_name}' in {self.main_file}")
-        else:
-            print(f"Function '{function_name}' not found in {self.main_file}")
+class FunctionReplacer:
+    def __init__(self, main_file: str, main_copy_file: str):
+        self.main_file = main_file
+        self.main_copy_file = main_copy_file
+
+    def replace_whole_file(self, new_code: str):
+        with open(self.main_file, 'w') as f:
+            f.write(new_code)
+        print(f"Replaced {self.main_file} with new code")
+
+    def replace_function_in_file(self, function_code: str):
+        function_node = ast.parse(dedent(function_code)).body[0]
+        if not isinstance(function_node, ast.FunctionDef):
+            print("Error: Provided code is not a function definition.")
+            return
+
+        function_name = function_node.name
+        
+        with open(self.main_file, 'r') as f:
+            content = f.read()
+            tree = ast.parse(content)
+        
+        class FunctionTransformer(ast.NodeTransformer):
+            def visit_FunctionDef(self, node):
+                if node.name == function_name:
+                    return function_node  # Replace the old function with the new one
+                return node
+        
+        new_tree = FunctionTransformer().visit(tree)
+        new_code = ast.unparse(new_tree)
+        
+        with open(self.main_file, 'w') as f:
+            f.write(new_code)
+        
+        print(f"Replaced function '{function_name}' in {self.main_file}")
 
     def run_tests(self):
         try:
             print("Running test cases...")
-            result = subprocess.run([sys.executable, '-m', 'pytest', 'test_study_problem.py','--tb=short', '-q',"--disable-warnings","--color=no"], capture_output=True, text=True)
+            result = subprocess.run([
+                sys.executable, '-m', 'pytest', 'test_study_problem.py',
+                '--tb=short', '-q', "--disable-warnings", "--color=no"
+            ], capture_output=True, text=True)
             print(result.stdout)
             print(result.stderr)
         except Exception as e:
@@ -184,8 +215,7 @@ class FunctionReplacer:
     def restore_main_file(self):
         with open(self.main_copy_file, 'r') as src, open(self.main_file, 'w') as dest:
             dest.write(src.read())
-        # print(f"Replaced {self.main_file} with {self.main_copy_file}")
-
+        print(f"Restored {self.main_file} to its original state")
 
 socketManager = SocketManager()
 
@@ -265,11 +295,17 @@ async def testFunction(rawCode: InputBody):
     buffer = io.StringIO()
     sys.stdout = buffer
     sys.stderr = buffer
-
-    replacer = FunctionReplacer("study_problem_tester.py", "study_problem_sol.py")
-    replacer.replace_function_in_file(rawCode.code)
-    replacer.run_tests()
-    replacer.restore_main_file()
+    if rawCode.channel == "all":
+        replacer = FunctionReplacer("study_problem_tester.py", "study_problem_sol.py")
+        replacer.replace_whole_file(rawCode.code)
+        replacer.run_tests()
+        replacer.restore_main_file
+        
+    else:
+        replacer = FunctionReplacer("study_problem_tester.py", "study_problem_sol.py")
+        replacer.replace_function_in_file(rawCode.code)
+        replacer.run_tests()
+        replacer.restore_main_file()
 
     sys.stdout = sys.__stdout__
 
