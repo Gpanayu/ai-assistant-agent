@@ -166,6 +166,7 @@ let secondaryView = new EditorView({
 */
 
 document.querySelector("#run")!.addEventListener("click", runCode);
+document.querySelector("#test")!.addEventListener("click", testCode);
 document.querySelector("#clear")!.addEventListener("click", clearCode);
 document.querySelector("#toggle")!.addEventListener("click", toggleView);
 document.querySelector("#update")!.addEventListener("click", updateName);
@@ -216,7 +217,28 @@ async function runCode() {
     body: JSON.stringify({code: code, channel: channel})
   })
 }
+async function testCode() {
+  const collab = document.querySelector('.tab-pane[data-pane="0"].active')
+  let channel = ""
+  let code: string | YText = ""
 
+  if (collab) {
+    channel = "all"
+    code = ytext
+  }
+  else {
+    channel = animalId
+    code = secondaryView.state.doc.toString()
+  }
+  await fetch("http://127.0.0.1:8000/testFunction", {
+    method: "POST",
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({code: code, channel: channel})
+  })
+}
 function appendToHistory(output: string, all: boolean) {
   history.push([new Date(), output, all])
 

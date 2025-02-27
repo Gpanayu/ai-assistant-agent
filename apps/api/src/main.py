@@ -175,7 +175,7 @@ class FunctionReplacer:
     def run_tests(self):
         try:
             print("Running test cases...")
-            result = subprocess.run([sys.executable, '-m', 'pytest', 'test.py'], capture_output=True, text=True)
+            result = subprocess.run([sys.executable, '-m', 'pytest', 'test_study_problem.py','--tb=short', '-q',"--disable-warnings","--color=no"], capture_output=True, text=True)
             print(result.stdout)
             print(result.stderr)
         except Exception as e:
@@ -184,7 +184,7 @@ class FunctionReplacer:
     def restore_main_file(self):
         with open(self.main_copy_file, 'r') as src, open(self.main_file, 'w') as dest:
             dest.write(src.read())
-        print(f"Replaced {self.main_file} with {self.main_copy_file}")
+        # print(f"Replaced {self.main_file} with {self.main_copy_file}")
 
 
 socketManager = SocketManager()
@@ -260,12 +260,13 @@ async def push_notification(notification: NotifyBody):
         )
     return {"ok": 200}
 
-async def testFunction(rawCode):
+@app.post("/testFunction")
+async def testFunction(rawCode: InputBody):
     buffer = io.StringIO()
     sys.stdout = buffer
     sys.stderr = buffer
 
-    replacer = FunctionReplacer("main.py", "maincopy.py")
+    replacer = FunctionReplacer("study_problem_tester.py", "study_problem_sol.py")
     replacer.replace_function_in_file(rawCode.code)
     replacer.run_tests()
     replacer.restore_main_file()

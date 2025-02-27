@@ -7,7 +7,7 @@
     "serve": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "fastapi dev main.py",
+        "command": "fastapi run main.py",
         "cwd": "apps/api/src"
       }
     }
