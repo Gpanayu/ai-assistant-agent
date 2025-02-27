@@ -9,7 +9,8 @@ from deepgram import DeepgramClient
 from dotenv import load_dotenv
 import os
 from pydantic import BaseModel
-
+import subprocess
+import re
 import sys
 import io
 
@@ -139,6 +140,52 @@ class EditorManager:
     def update_individual(self, id, state):
         self.individual[id] = state
 
+class FunctionReplacer:
+    def __init__(self, main_file: str, main_copy_file: str):
+        self.main_file = main_file
+        self.main_copy_file = main_copy_file
+
+    def replace_function_in_file(self, function_code: str):
+        function_name_match = re.search(r'def (\w+)', function_code)
+        if not function_name_match:
+            print("Error: Could not determine function name.")
+            return
+        
+        function_name = function_name_match.group(1)
+        
+        with open(self.main_file, 'r') as f:
+            content = f.read()
+
+        pattern = rf'^(?P<indent>\s*)def {function_name}\(.*?\):.*?(?=\n(?P=indent)def |\Z)'
+        
+        match = re.search(pattern, content, flags=re.DOTALL | re.MULTILINE)
+        if match:
+            indent = match.group("indent")  
+            indented_function_code = "\n".join(indent + line if line.strip() else line for line in function_code.split("\n"))
+            
+            new_content = re.sub(pattern, indented_function_code, content, flags=re.DOTALL | re.MULTILINE)
+            
+            with open(self.main_file, 'w') as f:
+                f.write(new_content)
+            
+            print(f"Replaced function '{function_name}' in {self.main_file}")
+        else:
+            print(f"Function '{function_name}' not found in {self.main_file}")
+
+    def run_tests(self):
+        try:
+            print("Running test cases...")
+            result = subprocess.run([sys.executable, '-m', 'pytest', 'test.py'], capture_output=True, text=True)
+            print(result.stdout)
+            print(result.stderr)
+        except Exception as e:
+            print("Error running tests:", e)
+    
+    def restore_main_file(self):
+        with open(self.main_copy_file, 'r') as src, open(self.main_file, 'w') as dest:
+            dest.write(src.read())
+        print(f"Replaced {self.main_file} with {self.main_copy_file}")
+
 
 socketManager = SocketManager()
 
@@ -213,6 +260,30 @@ async def push_notification(notification: NotifyBody):
         )
     return {"ok": 200}
 
+async def testFunction(rawCode):
+    buffer = io.StringIO()
+    sys.stdout = buffer
+    sys.stderr = buffer
+
+    replacer = FunctionReplacer("main.py", "maincopy.py")
+    replacer.replace_function_in_file(rawCode.code)
+    replacer.run_tests()
+    replacer.restore_main_file()
+
+    sys.stdout = sys.__stdout__
+
+    event = {
+        "event": "run",
+        "stdout": buffer.getvalue(),
+        "all": rawCode.channel == "all",
+    }
+
+    if rawCode.channel == "all":
+        await socketManager.broadcast(json.dumps(event))
+    else:
+        await socketManager.direct_message(json.dumps(event), rawCode.channel)
+
+    return Response(content=buffer.getvalue(), media_type="text/plain")
 
 @app.post("/test")
 async def test(rawCode: InputBody):
