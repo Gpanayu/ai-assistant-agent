@@ -15,6 +15,7 @@ import sys
 import io
 import ast
 from textwrap import dedent
+import csv
 
 import json
 
@@ -52,7 +53,7 @@ class SocketManager:
         global state
         conns = [conn for conn in self.connections if conn.id != "control"]
         if len(conns) == 1 and ws.id != "control":
-            with open("study_problem_blank.py", "r") as file:
+            with open("study_problem_sol.py", "r") as file:
                 code = file.read()
                 print(state)
                 if state == "":
@@ -105,30 +106,47 @@ class AudioProcessor:
             raise Exception(f"Could not open socket: {e}")
 
 
+class GraphNode:
+    def __init__(self, name: str, desc: str, concepts: str):
+        self.name = name
+        self.claimed_by = ""
+
+        # 0 - not claimed
+        # 1 - working
+        # 2 - done
+        self.work_status = 0
+
+        self.tasks = 0
+        self.completion = 0
+        self.desc = desc
+        self.concepts = concepts
+
+    def update_status(self, id: str):
+        if self.work_status != 2:
+            if self.claimed_by == "" and self.work_status == 0:
+                self.claimed_by = id
+                self.work_status = 1
+            elif self.claimed_by != "" and self.work_status == 1:
+                self.claimed_by = ""
+                self.work_status = 0
+
+
 class GraphManager:
     def __init__(self):
-        self.graph = {
-            "Restaurant": 0,
-            "Customer": 0,
-            "view_menu": 0,
-            "create_order": 0,
-            "clear_order": 0,
-            "view_order_summary": 0,
-            "add_to_order": 0,
-            "remove_from_order": 0,
-            "calculate_order_cost": 0,
-            "get_receipt": 0,
-            "inventory_helper": 0,
-            "cook_time_helper": 0,
-            "restock_inventory": 0,
-            "cook_order": 0,
-            "view_inventory": 0,
-            "add_to_queue": 0,
-            "average_cook_time": 0,
-        }
+        self.graph: Dict[str, GraphNode] = {}
 
-    def update_status(self, node_id):
-        self.graph[node_id] = (self.graph[node_id] + 1) % 3
+        with open("functions.csv", newline="") as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                self.graph[row["Function"]] = GraphNode(
+                    name=row["Function"],
+                    desc=row["description"],
+                    concepts=row["Concepts"],
+                )
+        print(self.graph)
+
+    def update_status(self, node_id: str, id: str):
+        self.graph[node_id].update_status(id)
 
 
 class EditorManager:
@@ -142,13 +160,14 @@ class EditorManager:
     def update_individual(self, id, state):
         self.individual[id] = state
 
+
 class FunctionReplacer:
     def __init__(self, main_file: str, main_copy_file: str):
         self.main_file = main_file
         self.main_copy_file = main_copy_file
 
     def replace_whole_file(self, new_code: str):
-        with open(self.main_file, 'w') as f:
+        with open(self.main_file, "w") as f:
             f.write(new_code)
         print(f"Replaced {self.main_file} with new code")
 
@@ -159,63 +178,52 @@ class FunctionReplacer:
             return
 
         function_name = function_node.name
-        
-        with open(self.main_file, 'r') as f:
+
+        with open(self.main_file, "r") as f:
             content = f.read()
             tree = ast.parse(content)
-        
-class FunctionReplacer:
-    def __init__(self, main_file: str, main_copy_file: str):
-        self.main_file = main_file
-        self.main_copy_file = main_copy_file
 
-    def replace_whole_file(self, new_code: str):
-        with open(self.main_file, 'w') as f:
-            f.write(new_code)
-        print(f"Replaced {self.main_file} with new code")
-
-    def replace_function_in_file(self, function_code: str):
-        function_node = ast.parse(dedent(function_code)).body[0]
-        if not isinstance(function_node, ast.FunctionDef):
-            print("Error: Provided code is not a function definition.")
-            return
-
-        function_name = function_node.name
-        
-        with open(self.main_file, 'r') as f:
-            content = f.read()
-            tree = ast.parse(content)
-        
         class FunctionTransformer(ast.NodeTransformer):
             def visit_FunctionDef(self, node):
                 if node.name == function_name:
                     return function_node  # Replace the old function with the new one
                 return node
-        
+
         new_tree = FunctionTransformer().visit(tree)
         new_code = ast.unparse(new_tree)
-        
-        with open(self.main_file, 'w') as f:
+
+        with open(self.main_file, "w") as f:
             f.write(new_code)
-        
+
         print(f"Replaced function '{function_name}' in {self.main_file}")
 
     def run_tests(self):
         try:
             print("Running test cases...")
-            result = subprocess.run([
-                sys.executable, '-m', 'pytest', 'test_study_problem.py',
-                '--tb=short', '-q', "--disable-warnings", "--color=no"
-            ], capture_output=True, text=True)
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "pytest",
+                    "test_study_problem.py",
+                    "--tb=short",
+                    "-q",
+                    "--disable-warnings",
+                    "--color=no",
+                ],
+                capture_output=True,
+                text=True,
+            )
             print(result.stdout)
             print(result.stderr)
         except Exception as e:
             print("Error running tests:", e)
-    
+
     def restore_main_file(self):
-        with open(self.main_copy_file, 'r') as src, open(self.main_file, 'w') as dest:
+        with open(self.main_copy_file, "r") as src, open(self.main_file, "w") as dest:
             dest.write(src.read())
         print(f"Restored {self.main_file} to its original state")
+
 
 socketManager = SocketManager()
 
@@ -290,6 +298,7 @@ async def push_notification(notification: NotifyBody):
         )
     return {"ok": 200}
 
+
 @app.post("/testFunction")
 async def testFunction(rawCode: InputBody):
     buffer = io.StringIO()
@@ -300,7 +309,7 @@ async def testFunction(rawCode: InputBody):
         replacer.replace_whole_file(rawCode.code)
         replacer.run_tests()
         replacer.restore_main_file
-        
+
     else:
         replacer = FunctionReplacer("study_problem_tester.py", "study_problem_sol.py")
         replacer.replace_function_in_file(rawCode.code)
@@ -321,6 +330,7 @@ async def testFunction(rawCode: InputBody):
         await socketManager.direct_message(json.dumps(event), rawCode.channel)
 
     return Response(content=buffer.getvalue(), media_type="text/plain")
+
 
 @app.post("/test")
 async def test(rawCode: InputBody):
@@ -390,10 +400,17 @@ async def websocket_text_endpoint(websocket: WebSocket, id: str):
                 await socketManager.broadcast(json.dumps(event))
 
             if loaded["event"] == "updateNode":
-                graph_manager.update_status(loaded["payload"]["node"])
+                graph_manager.update_status(
+                    node_id=loaded["payload"]["node"], id=loaded["payload"]["id"]
+                )
+                work_statuses = [
+                    {node: graph_manager.graph[node].work_status}
+                    for node in graph_manager.graph
+                ]
+                print(work_statuses)
                 event = {
                     "event": "updateGraph",
-                    "payload": {"graph": graph_manager.graph},
+                    "payload": {"graph": work_statuses},
                 }
                 await socketManager.broadcast(json.dumps(event))
 
@@ -410,3 +427,14 @@ def get_editors():
         "individual": editor_manager.individual,
     }
     return event
+
+
+@app.get("/lookup/{node}")
+def lookup_description(node):
+    if node in graph_manager.graph:
+        looked_up = graph_manager.graph[node]
+        html_str = f"<p>{looked_up.desc}</p><i>{looked_up.concepts}</i>"
+        if looked_up.claimed_by != "":
+            html_str += f"<p>Claimed by <b>{looked_up.claimed_by}</b></p>"
+        return {"html": html_str}
+    return {"html": ""}

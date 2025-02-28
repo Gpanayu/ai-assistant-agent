@@ -96,12 +96,16 @@ svgGroup.selectAll(".node").on("click", function (event, nodeId) {
     node.classed("checked1", true);
   }
 
-  ws.send(JSON.stringify({ event: "updateNode", payload: { node: nodeId } }))
+  ws.send(JSON.stringify({ event: "updateNode", payload: { node: nodeId, id: animalId } }))
 });
 
-svgGroup.selectAll(".node").on("mouseover", function (event, nodeId) {
+svgGroup.selectAll(".node").on("mouseover", async function (event, nodeId) {
+
+    const node = await fetch(`http://0.0.0.0:8000/lookup/${nodeId}`)
+    const loaded = await node.json()
+
     tippy(this, {
-        content: descriptions[nodeId],
+        content: loaded["html"],
         allowHTML: true
     });
 });
