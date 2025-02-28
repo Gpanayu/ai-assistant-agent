@@ -120,7 +120,7 @@ class Restaurant:
         item: quantity  
         """
         pass
-    
+
     def restock_inventory(self, item: str, amount: int):
         """
         Restock the inventory with the amount of the item
@@ -147,23 +147,3 @@ class Restaurant:
         print(f"Average cooking time: {avg_time:.2f} minutes.")
         return avg_time
 
-restaurant = Restaurant()
-customer = Customer("Alice")
-
-def run():
-    customer.view_menu()
-    order = customer.create_order()
-    customer.add_to_order(order, "chicken")
-    customer.add_to_order(order, "beef")
-    customer.add_to_order(order, "vegetables")
-
-    customer.remove_from_order(order, "vegetables")
-    customer.remove_from_order(order, "beef")
-
-    customer.get_receipt(order)
-
-    restaurant.add_to_queue(order)
-    (id, time) = restaurant.cook_order()
-    print(id, time)
-
-run()
