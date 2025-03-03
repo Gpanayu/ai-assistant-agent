@@ -52,7 +52,7 @@ class SocketManager:
         global state
         conns = [conn for conn in self.connections if conn.id != "control"]
         if len(conns) == 1 and ws.id != "control":
-            with open("study_problem_sol.py", "r") as file:
+            with open("study_problem_blank.py", "r") as file:
                 code = file.read()
                 print(state)
                 if state == "":
@@ -245,13 +245,13 @@ class FunctionReplacer:
                 text=True,
             )
 
-            parts = re.split(r'\n', result.stdout, maxsplit=2)
-            print(parts[0].count("."), len(parts[0].split(" ")[0]))
-            await graph_manager.update_completed(
-                    node_id=self.function_name,
-                    completed=parts[0].count("."),
-                    remaining=len(parts[0].split(" ")[0])
-            )
+            if not self.test_full:
+                parts = re.split(r'\n', result.stdout, maxsplit=2)
+                await graph_manager.update_completed(
+                        node_id=self.function_name,
+                        completed=parts[0].count("."),
+                        remaining=len(parts[0].split(" ")[0])
+                )
             print(result.stdout)
             # print(result.stderr)
         except Exception as e:

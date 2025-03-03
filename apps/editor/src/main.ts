@@ -208,7 +208,7 @@ async function runCode() {
     channel = animalId
     code = secondaryView.state.doc.toString()
   }
-  await fetch("http://prime-lab.cs.vt.edu:8000/test", {
+  await fetch("https://prime-lab.cs.vt.edu:8000/test", {
     method: "POST",
     headers: {
       'Accept': 'application/json',
@@ -230,7 +230,7 @@ async function testCode() {
     channel = animalId
     code = secondaryView.state.doc.toString()
   }
-  await fetch("http://prime-lab.cs.vt.edu:8000/testFunction", {
+  await fetch("https://prime-lab.cs.vt.edu:8000/testFunction", {
     method: "POST",
     headers: {
       'Accept': 'application/json',
