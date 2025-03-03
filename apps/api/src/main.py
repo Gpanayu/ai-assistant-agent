@@ -41,6 +41,11 @@ class NotifyBody(BaseModel):
     options: List[str]
 
 
+class ReplyBody(BaseModel):
+    id: str
+    choice: str
+
+
 class SocketManager:
     def __init__(self):
         self.connections: list[WebSocket] = []
@@ -478,3 +483,8 @@ def lookup_description(node):
 
         return {"html": html_str}
     return {"html": ""}
+
+
+@app.get("/reply")
+def reply_to_notif(body: ReplyBody):
+    print(body.id, body.choice)

@@ -171,6 +171,7 @@ document.querySelector("#clear")!.addEventListener("click", clearCode);
 document.querySelector("#toggle")!.addEventListener("click", toggleView);
 document.querySelector("#update")!.addEventListener("click", updateName);
 document.querySelector("#close")!.addEventListener("click", closeNotif)
+document.querySelector("#accept")!.addEventListener("click", acceptNotif)
 
 /*
 +------------------+
@@ -307,5 +308,25 @@ function updateName() {
 }
 
 function closeNotif() {
+  document.querySelector<HTMLSpanElement>("#notification")!.classList.remove("active")
+}
+
+function acceptNotif() {
+  const selectedOption = document.querySelector('input[name="option[]"]:checked');
+  if (selectedOption) {
+    fetch("https://prime-lab.cs.vt.edu:8000/reply", {
+      method: "POST",
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({id: id, choice: selectedOption.id})
+    })
+    console.log(selectedOption.id);
+  }
+  else {
+      console.log("No option selected");
+  }
+
   document.querySelector<HTMLSpanElement>("#notification")!.classList.remove("active")
 }

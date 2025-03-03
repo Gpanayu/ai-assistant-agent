@@ -55,7 +55,7 @@ const cursorTooltipField = StateField.define<readonly Tooltip[]>({
 })
 
 
-const ws = new WebSocket("wss://0.0.0.0:8000/ws/control");
+const ws = new WebSocket("wss://prime-lab.cs.vt.edu:8000/ws/control");
 
 let view: EditorView | null = null;
 let lastDoc = ""
@@ -109,7 +109,7 @@ view = new EditorView({
 document.getElementById("fetch")?.addEventListener("click", getState)
 
 async function getState() {
-  const data = await fetch('https://0.0.0.0:8000/fetch')
+  const data = await fetch('https://prime-lab.cs.vt.edu:8000/fetch')
   const thing = await data.json()
   view?.dispatch({
     changes: { from: 0, to: view.state.doc.length, insert: thing["state"] }
