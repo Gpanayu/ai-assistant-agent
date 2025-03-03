@@ -14,7 +14,7 @@
     "run-prod": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "uvicorn main:app --ssl-keyfile ./key.pem --ssl-certfile ./cert.pem",
+        "command": "uvicorn main:app --ssl-keyfile ./key.pem --ssl-certfile ./cert.pem --host 0.0.0.0",
         "cwd": "apps/api/src"
       }
     }

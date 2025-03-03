@@ -20,7 +20,7 @@ const animalId = generateId(id, {numAdjectives: 1, caseStyle: 'titlecase'})
 localStorage.setItem("id", animalId)
 
 // TODO: update for wss
-const ws = new WebSocket(`wss://0.0.0.0:8000/ws/${animalId}`);
+const ws = new WebSocket(`wss://prime-lab.cs.vt.edu:8000/ws/${animalId}`);
 
 document.querySelector<HTMLSpanElement>("#id")!.innerText += animalId
 
@@ -208,7 +208,7 @@ async function runCode() {
     channel = animalId
     code = secondaryView.state.doc.toString()
   }
-  await fetch("http://127.0.0.1:8000/test", {
+  await fetch("http://prime-lab.cs.vt.edu:8000/test", {
     method: "POST",
     headers: {
       'Accept': 'application/json',
@@ -230,7 +230,7 @@ async function testCode() {
     channel = animalId
     code = secondaryView.state.doc.toString()
   }
-  await fetch("http://127.0.0.1:8000/testFunction", {
+  await fetch("http://prime-lab.cs.vt.edu:8000/testFunction", {
     method: "POST",
     headers: {
       'Accept': 'application/json',

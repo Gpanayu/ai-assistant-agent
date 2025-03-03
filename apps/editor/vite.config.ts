@@ -5,7 +5,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://0.0.0.0:8000', // FastAPI server address
+        target: 'https://prime-lab.cs.vt.edu:8000', // FastAPI server address
         changeOrigin: true,
       }
     },

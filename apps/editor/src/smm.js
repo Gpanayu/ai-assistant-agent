@@ -92,7 +92,7 @@ svgGroup.selectAll(".node").on("mouseover", async function (event, nodeId) {
             instance.setContent('Loading...');
         },
         onShow(instance) {
-            fetch(`https://0.0.0.0:8000/lookup/${nodeId}`)
+            fetch(`https://prime-lab.cs.vt.edu:8000/lookup/${nodeId}`)
                 .then(res => res.json())
                 .then(data => {
                     console.log(data)
@@ -106,7 +106,7 @@ svgGroup.selectAll(".node").on("mouseover", async function (event, nodeId) {
 
 
 const animalId = localStorage.getItem("id")
-const ws = new WebSocket(`wss://0.0.0.0:8000/ws/${animalId}`);
+const ws = new WebSocket(`wss://prime-lab.cs.vt.edu:8000/ws/${animalId}`);
 
 
 ws.addEventListener("message", (event) => {
