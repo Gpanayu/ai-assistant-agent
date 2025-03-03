@@ -10,6 +10,13 @@
         "command": "fastapi run main.py",
         "cwd": "apps/api/src"
       }
+    },
+    "run-prod": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "uvicorn main:app --ssl-keyfile ./key.pem --ssl-certfile ./cert.pem",
+        "cwd": "apps/api/src"
+      }
     }
   },
   "tags": []

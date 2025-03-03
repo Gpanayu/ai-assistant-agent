@@ -16,7 +16,6 @@ import ast
 from textwrap import dedent
 import csv
 from collections import ChainMap
-
 import json
 
 load_dotenv()
@@ -152,7 +151,6 @@ class GraphManager:
                     desc=row["description"],
                     concepts=row["Concepts"],
                 )
-        print(self.graph)
 
     def update_status(self, node_id: str, id: str):
         self.graph[node_id].update_status(id)
