@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from fastapi import Response
-from fastapi.staticfiles import StaticFiles
 from typing import Dict, Callable, List
 from deepgram import DeepgramClient
 from dotenv import load_dotenv
@@ -16,6 +15,7 @@ import io
 import ast
 from textwrap import dedent
 import csv
+from collections import ChainMap
 
 import json
 
@@ -116,8 +116,8 @@ class GraphNode:
         # 2 - done
         self.work_status = 0
 
-        self.tasks = 0
-        self.completion = 0
+        self.completed = 0
+        self.total = 0
         self.desc = desc
         self.concepts = concepts
 
@@ -129,6 +129,15 @@ class GraphNode:
             elif self.claimed_by != "" and self.work_status == 1:
                 self.claimed_by = ""
                 self.work_status = 0
+
+    def update_completed(self, completed: int, remaining: int):
+        if self.claimed_by != "":
+            if completed == remaining:
+                self.work_status = 2
+            else:
+                self.work_status = 1
+            self.total = remaining
+            self.completed = completed
 
 
 class GraphManager:
@@ -148,6 +157,19 @@ class GraphManager:
     def update_status(self, node_id: str, id: str):
         self.graph[node_id].update_status(id)
 
+    async def update_completed(self, node_id: str, completed: int, remaining: int):
+        self.graph[node_id].update_completed(completed, remaining)
+        work_statuses = [
+            {node: graph_manager.graph[node].work_status}
+            for node in graph_manager.graph
+        ]
+
+        event = {
+            "event": "updateGraph",
+            "payload": {"graph": dict(ChainMap(*work_statuses))},
+        }
+        await socketManager.broadcast(json.dumps(event))
+
 
 class EditorManager:
     def __init__(self):
@@ -165,19 +187,24 @@ class FunctionReplacer:
     def __init__(self, main_file: str, main_copy_file: str):
         self.main_file = main_file
         self.main_copy_file = main_copy_file
+        self.function_name = ""
+        self.test_full = False
 
     def replace_whole_file(self, new_code: str):
         with open(self.main_file, "w") as f:
             f.write(new_code)
+        self.test_full = True
         print(f"Replaced {self.main_file} with new code")
 
     def replace_function_in_file(self, function_code: str):
+        self.test_full = False
         function_node = ast.parse(dedent(function_code)).body[0]
         if not isinstance(function_node, ast.FunctionDef):
             print("Error: Provided code is not a function definition.")
             return
 
         function_name = function_node.name
+        self.function_name = function_name
 
         with open(self.main_file, "r") as f:
             content = f.read()
@@ -195,27 +222,40 @@ class FunctionReplacer:
         with open(self.main_file, "w") as f:
             f.write(new_code)
 
-        print(f"Replaced function '{function_name}' in {self.main_file}")
-
-    def run_tests(self):
+    async def run_tests(self):
         try:
             print("Running test cases...")
+            test_cases = ""
+            if not self.test_full:
+                parts = re.split(r'_', self.function_name, maxsplit=2)
+                print(f"test_{parts[0] + "_" + parts[1]}")
+                test_cases = f"{parts[0] + "_" + parts[1]}"
+
             result = subprocess.run(
                 [
                     sys.executable,
                     "-m",
                     "pytest",
-                    "test_study_problem.py",
+                    "-k",
+                    test_cases,
                     "--tb=short",
                     "-q",
-                    "--disable-warnings",
                     "--color=no",
+                    "-rf"
                 ],
                 capture_output=True,
                 text=True,
             )
+
+            parts = re.split(r'\n', result.stdout, maxsplit=2)
+            print(parts[0].count("."), len(parts[0].split(" ")[0]))
+            await graph_manager.update_completed(
+                    node_id=self.function_name,
+                    completed=parts[0].count("."),
+                    remaining=len(parts[0].split(" ")[0])
+            )
             print(result.stdout)
-            print(result.stderr)
+            # print(result.stderr)
         except Exception as e:
             print("Error running tests:", e)
 
@@ -307,13 +347,13 @@ async def testFunction(rawCode: InputBody):
     if rawCode.channel == "all":
         replacer = FunctionReplacer("study_problem_tester.py", "study_problem_sol.py")
         replacer.replace_whole_file(rawCode.code)
-        replacer.run_tests()
+        await replacer.run_tests()
         replacer.restore_main_file
 
     else:
         replacer = FunctionReplacer("study_problem_tester.py", "study_problem_sol.py")
         replacer.replace_function_in_file(rawCode.code)
-        replacer.run_tests()
+        await replacer.run_tests()
         replacer.restore_main_file()
 
     sys.stdout = sys.__stdout__
@@ -407,10 +447,9 @@ async def websocket_text_endpoint(websocket: WebSocket, id: str):
                     {node: graph_manager.graph[node].work_status}
                     for node in graph_manager.graph
                 ]
-                print(work_statuses)
                 event = {
                     "event": "updateGraph",
-                    "payload": {"graph": work_statuses},
+                    "payload": {"graph": dict(ChainMap(*work_statuses))},
                 }
                 await socketManager.broadcast(json.dumps(event))
 
@@ -436,5 +475,8 @@ def lookup_description(node):
         html_str = f"<p>{looked_up.desc}</p><i>{looked_up.concepts}</i>"
         if looked_up.claimed_by != "":
             html_str += f"<p>Claimed by <b>{looked_up.claimed_by}</b></p>"
+        if looked_up.total != 0:
+            html_str += f"<p>Progress: <b>{looked_up.completed}/{looked_up.total}</b></p>"
+
         return {"html": html_str}
     return {"html": ""}

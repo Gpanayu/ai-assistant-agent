@@ -83,29 +83,23 @@ svgGroup.attr("transform", "translate(" + xCenterOffset + ", 20)");
 svg.attr("height", g.graph().height + 40);
 
 svgGroup.selectAll(".node").on("click", function (event, nodeId) {
-  var node = d3.select(this);
-
-  if (node.classed("checked2")) {
-    node.classed("checked2", false);
-  }
-  else if (node.classed("checked1")) {
-    node.classed("checked1", false);
-    node.classed("checked2", true);
-  }
-  else {
-    node.classed("checked1", true);
-  }
-
   ws.send(JSON.stringify({ event: "updateNode", payload: { node: nodeId, id: animalId } }))
 });
 
 svgGroup.selectAll(".node").on("mouseover", async function (event, nodeId) {
-
-    const node = await fetch(`http://0.0.0.0:8000/lookup/${nodeId}`)
-    const loaded = await node.json()
-
     tippy(this, {
-        content: loaded["html"],
+        onHidden(instance) {
+            instance.setContent('Loading...');
+        },
+        onShow(instance) {
+            fetch(`http://0.0.0.0:8000/lookup/${nodeId}`)
+                .then(res => res.json())
+                .then(data => {
+                    console.log(data)
+                    instance.setContent(data.html)
+                })
+
+        },
         allowHTML: true
     });
 });
@@ -119,14 +113,18 @@ ws.addEventListener("message", (event) => {
   const data = JSON.parse(event.data)
   if (data["event"] === "updateGraph") {
     const graph = data["payload"]["graph"]
+    console.log(graph)
     svgGroup.selectAll(".node").each(function (node, nodeId) {
       if (graph[node] == 2) {
+        console.log("completed", node)
         let select = d3.select(this)
         select.classed("checked2", true);
+        select.classed("checked1", false);
       }
       if (graph[node] == 1) {
         let select = d3.select(this)
         select.classed("checked1", true);
+        select.classed("checked2", false);
       }
       if (graph[node] == 0) {
         let select = d3.select(this)

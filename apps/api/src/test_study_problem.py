@@ -90,13 +90,13 @@ class TestCustomer(unittest.TestCase):
         sys.stdout = sys.__stdout__
         self.assertEqual(captured_output.getvalue(), "item | cost\n")
 
-    def test_create_multiple_orders(self):
+    def test_create_order_multiple_orders(self):
         """Test creating multiple orders generates unique IDs"""
         orders = [self.customer.create_order() for _ in range(10)]
         order_ids = [order.id for order in orders]
         self.assertEqual(len(set(order_ids)), 10)
 
-    def test_add_multiple_same_items(self):
+    def test_add_to_order_multiple_same_items(self):
         """Test adding same item multiple times"""
         order = self.customer.create_order()
         self.customer.add_to_order(order, "chicken")
@@ -104,7 +104,7 @@ class TestCustomer(unittest.TestCase):
         self.assertEqual(order.items.count("chicken"), 2)
         self.assertEqual(order.cost, 24.00)
 
-    def test_remove_all_items(self):
+    def test_remove_from_order_all_items(self):
         """Test removing all items from order"""
         order = Order(1234, ["chicken", "rice", "vegetables"], 33.00)
         for item in order.items.copy():
@@ -218,12 +218,12 @@ class TestRestaurant(unittest.TestCase):
         self.assertIsInstance(self.restaurant.cook_time_in_minutes, dict)
         self.assertIsInstance(self.restaurant.order_queue, list)
 
-    def test_empty_queue_cook_order(self):
+    def test_cook_order_empty_queue(self):
         """Test cooking order with empty queue"""
         with self.assertRaises(IndexError):
             self.restaurant.cook_order()
 
-    def test_insufficient_inventory(self):
+    def test_inventory_insufficient(self):
         """Test cooking order with insufficient inventory"""
         self.restaurant.inventory["chicken"] = 0
 
@@ -233,7 +233,7 @@ class TestRestaurant(unittest.TestCase):
 
         self.assertEqual(cook_time, 0)
 
-    def test_large_order_cooking(self):
+    def test_cook_order_large_order(self):
         """Test cooking large order with multiple items"""
         order = Order(1234, ["chicken", "pork", "vegetables", "rice"], 43.00)
         self.restaurant.add_to_queue(order)
@@ -244,7 +244,7 @@ class TestRestaurant(unittest.TestCase):
         )
         self.assertEqual(cook_time, expected_time)
 
-    def test_multiple_orders_queue(self):
+    def test_add_to_queue_multiple_orders(self):
         """Test handling multiple orders in queue"""
         orders = [
             Order(1, ["chicken"], 12.00),
