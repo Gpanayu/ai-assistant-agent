@@ -2,6 +2,7 @@
 import { defineConfig } from 'vite';
 import { nxViteTsPaths } from '@nx/vite/plugins/nx-tsconfig-paths.plugin';
 import { nxCopyAssetsPlugin } from '@nx/vite/plugins/nx-copy-assets.plugin';
+import mkcert from 'vite-plugin-mkcert'
 
 export default defineConfig({
   root: __dirname,
@@ -14,7 +15,7 @@ export default defineConfig({
     port: 4300,
     host: 'localhost',
   },
-  plugins: [nxViteTsPaths(), nxCopyAssetsPlugin(['*.md'])],
+  plugins: [nxViteTsPaths(), nxCopyAssetsPlugin(['*.md']), mkcert()],
   // Uncomment this if you are using workers.
   // worker: {
   //  plugins: [ nxViteTsPaths() ],
