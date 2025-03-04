@@ -95,6 +95,13 @@ class TestCustomer(unittest.TestCase):
         orders = [self.customer.create_order() for _ in range(10)]
         order_ids = [order.id for order in orders]
         self.assertEqual(len(set(order_ids)), 10)
+    
+    def test_create_order_4_digit(self):
+        """Test that the Order ID is a four-digit number"""
+        for _ in range(100): 
+            order = self.customer.create_order()
+            self.assertTrue(1000 <= order.id <= 9999, "Order ID should be a four-digit number")
+
 
     def test_add_to_order_multiple_same_items(self):
         """Test adding same item multiple times"""
