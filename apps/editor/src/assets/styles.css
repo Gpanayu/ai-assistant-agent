@@ -24,12 +24,11 @@ h1, h4 {
 
 #editorContainer {
   display: grid;
-
-  height: 85vh;
-}
-
-.vertical {
   grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  column-gap: 10px;
+
+  height: 90vh;
 }
 
 .horizontal {
@@ -45,20 +44,18 @@ h1, h4 {
   display: inline-block;
 }
 
+
 .split-h {
   display: grid;
   grid-template-columns: 50% 50%;
   max-height: 50vh;
+  width: 100%;
+  grid-column: span 2;
 }
-
-.split-v {
-  display: grid;
-  grid-template-rows: 50% 50%;
-  max-height: 85vh;
- }
 
 #smm {
   background-color: var(--secondary-bg-color);
+  filter: hue-rotate(20deg);
   height: 100%;
 }
 
@@ -136,17 +133,18 @@ h1, h4 {
 .notification {
   display: grid;
   visibility: hidden; /* Hidden by default. Visible on click */
-  max-width: 500px; /* Set a default minimum width */
+  width: 500px; /* Set a default minimum width */
   margin: auto;
-  background-color: #333; /* Black background color */
-  color: #fff; /* White text color */
+  color: #000;
+  background-color: #fff; /* Black background color */
+  position: fixed;
+  top: 25%;
+  left: 50%;
+  /* bring your own prefixes */
+  transform: translate(-50%, -50%);
   border-radius: 2px; /* Rounded borders */
   padding: 16px; /* Padding */
-  position: fixed; /* Sit on top of the screen */
-  z-index: 1; /* Add a z-index if needed */
-  left: 0;
-  right: 0;
-  top: 50px; /* 50px from the top */
+  z-index: 2;
 }
 
 .notification.active {
@@ -156,6 +154,28 @@ h1, h4 {
   However, delay the fade out process for 2.5 seconds */
   -webkit-animation: fadein 0.5s, fadeout 0.5s 2.5s;
   animation: fadein 0.5s, fadeout 0.5s 2.5s;
+}
+
+.notification.active > .notification-bg {
+  visibility: visible !important; /* Show the snackbar */
+
+  /* Add animation: Take 0.5 seconds to fade in and out the snackbar.
+  However, delay the fade out process for 2.5 seconds */
+  -webkit-animation: fadein 0.5s, fadeout 0.5s 2.5s;
+  animation: fadein 0.5s, fadeout 0.5s 2.5s;
+}
+
+.notification-bg {
+  visibility: hidden;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0,0,0,0.3);
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  /* bring your own prefixes */
+  transform: translate(-50%, -50%);
+  z-index: 1;
 }
 
 .notification > button {
@@ -173,6 +193,7 @@ h1, h4 {
   background: none;
   outline: none;
   border: none;
-  color: pink;
+  color: blue;
   cursor: pointer;
 }
+

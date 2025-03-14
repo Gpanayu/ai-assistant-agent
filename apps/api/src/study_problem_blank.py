@@ -2,6 +2,7 @@ import random
 from typing import List, Tuple
 from study_problem_classes import Menu, Order, Customer, Restaurant
 
+
 def view_menu(customer: Customer):
     """
     Display the menu items with their cost in the following format:
@@ -17,7 +18,7 @@ def view_menu(customer: Customer):
         print(f"{k} | {v}")
 
 
-def create_order(customer:Customer) -> Order:
+def create_order(customer: Customer) -> Order:
     """
     Create a new order for the customer.
 
@@ -29,7 +30,8 @@ def create_order(customer:Customer) -> Order:
     uuid = random.randint(1000, 9999)
     return Order(uuid)
 
-def clear_order( customer:Customer,order: Order):
+
+def clear_order(customer: Customer, order: Order):
     """
     Clear the order by removing all items and resetting the cost to zero.
 
@@ -43,7 +45,8 @@ def clear_order( customer:Customer,order: Order):
     order.cost = 0
     print("Order cleared.")
 
-def view_order_summary(customer:Customer,order: Order):
+
+def view_order_summary(customer: Customer, order: Order):
     """
     Print a summary of the order including each item with its cost and the total cost.
 
@@ -63,7 +66,7 @@ def view_order_summary(customer:Customer,order: Order):
     print(f"Total: ${order.cost}")
 
 
-def add_to_order(customer:Customer, order: Order, item: str):
+def add_to_order(customer: Customer, order: Order, item: str):
     """
     Add an item to the order if it exists on the menu and update the total cost.
 
@@ -80,14 +83,14 @@ def add_to_order(customer:Customer, order: Order, item: str):
     """
     if item in customer.menu.menu:
         order.items.append(item)
-        order.cost = calculate_order_cost(customer,order)
+        order.cost = calculate_order_cost(customer, order)
         print(f"Added {item}: {customer.menu.menu[item]}")
         return item
 
     print("Not on menu")
 
 
-def remove_from_order(customer:Customer, order: Order, item: str) -> bool:
+def remove_from_order(customer: Customer, order: Order, item: str) -> bool:
     """
     Remove an item from the order if it exists and update the total cost.
 
@@ -104,7 +107,7 @@ def remove_from_order(customer:Customer, order: Order, item: str) -> bool:
     """
     if item in order.items:
         order.items.remove(item)
-        order.cost = calculate_order_cost(customer,order)
+        order.cost = calculate_order_cost(customer, order)
         print(f"Removed {item}")
         return True
 
@@ -112,7 +115,7 @@ def remove_from_order(customer:Customer, order: Order, item: str) -> bool:
     return False
 
 
-def calculate_order_cost( customer:Customer,order: Order):
+def calculate_order_cost(customer: Customer, order: Order):
     """
     Calculate the total cost of the order based on the items ordered.
 
@@ -128,7 +131,7 @@ def calculate_order_cost( customer:Customer,order: Order):
     return cost
 
 
-def get_receipt(customer:Customer, order: Order):
+def get_receipt(customer: Customer, order: Order):
     """
     Print the receipt in the following format:
 
@@ -152,8 +155,7 @@ def get_receipt(customer:Customer, order: Order):
     print(f"{order.cost}")
 
 
-
-def add_to_queue( restaurant:Restaurant,order: Order):
+def add_to_queue(restaurant: Restaurant, order: Order):
     """
     Add an incoming order to the restaurant's order queue.
 
@@ -163,7 +165,7 @@ def add_to_queue( restaurant:Restaurant,order: Order):
     restaurant.order_queue.append(order)
 
 
-def cook_order(restaurant:Restaurant) -> Tuple[str, int]:
+def cook_order(restaurant: Restaurant) -> Tuple[str, int]:
     """
     Process the latest order in the queue if there is sufficient inventory.
 
@@ -177,11 +179,12 @@ def cook_order(restaurant:Restaurant) -> Tuple[str, int]:
     order = restaurant.order_queue.pop()
     time = 0
     for item in order.items:
-        if inventory_helper(restaurant,item):
-            time += cook_time_helper(restaurant,item)
+        if inventory_helper(restaurant, item):
+            time += cook_time_helper(restaurant, item)
     return (order.id, time)
 
-def view_inventory(restaurant:Restaurant):
+
+def view_inventory(restaurant: Restaurant):
     """
     Display the current inventory in the following format:
 
@@ -192,7 +195,8 @@ def view_inventory(restaurant:Restaurant):
     for item, quantity in restaurant.inventory.items():
         print(f"{item}: {quantity}")
 
-def restock_inventory(restaurant:Restaurant, item: str, amount: int):
+
+def restock_inventory(restaurant: Restaurant, item: str, amount: int):
     """
     Restock the inventory with a given amount for a specified item.
 
@@ -211,7 +215,7 @@ def restock_inventory(restaurant:Restaurant, item: str, amount: int):
         print(f"{item} not found in inventory.")
 
 
-def cook_time_helper(restaurant:Restaurant, item: str):
+def cook_time_helper(restaurant: Restaurant, item: str):
     """
     Retrieve the cooking time for a specific item.
 
@@ -224,7 +228,7 @@ def cook_time_helper(restaurant:Restaurant, item: str):
     return restaurant.cook_time_in_minutes[item]
 
 
-def inventory_helper(restaurant:Restaurant, item: str):
+def inventory_helper(restaurant: Restaurant, item: str):
     """
     Check if the item is available in inventory and decrement its quantity by one if available.
 
@@ -239,7 +243,8 @@ def inventory_helper(restaurant:Restaurant, item: str):
         return True
     return False
 
-def average_cook_time(restaurant:Restaurant):
+
+def average_cook_time(restaurant: Restaurant):
     """
     Calculate and print the average cooking time for all orders in the queue.
 
@@ -255,7 +260,7 @@ def average_cook_time(restaurant:Restaurant):
         print("No orders in queue.")
         return 0
     total_time = sum(
-        cook_time_helper(restaurant,item)
+        cook_time_helper(restaurant, item)
         for order in restaurant.order_queue
         for item in order.items
     )

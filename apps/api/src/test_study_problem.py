@@ -1,432 +1,303 @@
-import unittest
 from typing import List, Tuple
-from unittest.mock import patch, Mock
 import io
 import sys
-import random
-
-from study_problem_tester import Menu, Order, Customer, Restaurant
-
-
-class TestMenu(unittest.TestCase):
-    """Dedicated test class for Menu functionality"""
-
-    def setUp(self):
-        self.menu = Menu()
-
-    def test_menu_initialization(self):
-        """Test if Menu is initialized with correct items and prices"""
-        expected_menu = {
-            "chicken": 12.00,
-            "pork": 10.00,
-            "vegetables": 9.00,
-            "rice": 12.00,
-        }
-        self.assertEqual(self.menu.menu, expected_menu)
-
-    def test_menu_item_types(self):
-        """Test if menu items and prices are of correct types"""
-        for item, price in self.menu.menu.items():
-            self.assertIsInstance(item, str)
-            self.assertIsInstance(price, float)
-
-
-class TestOrder(unittest.TestCase):
-    """Dedicated test class for Order functionality"""
-
-    def setUp(self):
-        self.order = Order()
-
-    def test_order_initialization(self):
-        """Test Order initialization with default values"""
-        self.assertEqual(self.order.id, 0)
-        self.assertEqual(self.order.items, [])
-        self.assertEqual(self.order.cost, 0)
-
-    def test_order_custom_initialization(self):
-        """Test Order initialization with custom values"""
-        items = ["chicken", "rice"]
-        order = Order(1234, items, 24.00)
-        self.assertEqual(order.id, 1234)
-        self.assertEqual(order.items, items)
-        self.assertEqual(order.cost, 24.00)
-
-    def test_order_item_modification(self):
-        """Test direct modification of order items"""
-        self.order.items.append("chicken")
-        self.assertEqual(len(self.order.items), 1)
-        self.assertEqual(self.order.items[0], "chicken")
-
-
-class TestCustomer(unittest.TestCase):
-    """Dedicated test class for Customer functionality"""
-
-    def setUp(self):
-        self.customer = Customer("Test Customer")
-        self.order = Order()
-
-    def test_customer_initialization(self):
-        """Test customer initialization with name and menu"""
-        self.assertEqual(self.customer.name, "Test Customer")
-        self.assertIsInstance(self.customer.menu, Menu)
-
-    def test_view_menu_with_items(self):
-        """Test view_menu with a non-empty menu"""
-        self.customer.menu.menu = {"chicken": 12.00, "rice": 5.00, "vegetables": 9.00}
-        captured_output = io.StringIO()
-        sys.stdout = captured_output
-        self.customer.view_menu()
-        sys.stdout = sys.__stdout__
-        # Expected: header plus each item on a new line.
-        expected_output = "item | cost\nchicken | 12.0\nrice | 5.0\nvegetables | 9.0\n"
-        self.assertEqual(captured_output.getvalue(), expected_output)
-
-    def test_view_menu_empty_menu(self):
-        """Test view_menu with empty menu"""
-        self.customer.menu.menu = {}
-        captured_output = io.StringIO()
-        sys.stdout = captured_output
-        self.customer.view_menu()
-        sys.stdout = sys.__stdout__
-        self.assertEqual(captured_output.getvalue(), "item | cost\n")
-
-    def test_create_order_multiple_orders(self):
-        """Test creating multiple orders generates unique IDs"""
-        orders = [self.customer.create_order() for _ in range(10)]
-        order_ids = [order.id for order in orders]
-        self.assertEqual(len(set(order_ids)), 10)
-    
-    def test_create_order_4_digit(self):
-        """Test that the Order ID is a four-digit number"""
-        for _ in range(100): 
-            order = self.customer.create_order()
-            self.assertTrue(1000 <= order.id <= 9999, "Order ID should be a four-digit number")
-
-
-    def test_add_to_order_multiple_same_items(self):
-        """Test adding same item multiple times"""
-        order = self.customer.create_order()
-        self.customer.add_to_order(order, "chicken")
-        self.customer.add_to_order(order, "chicken")
-        self.assertEqual(order.items.count("chicken"), 2)
-        self.assertEqual(order.cost, 24.00)
-
-    def test_remove_from_order_all_items(self):
-        """Test removing all items from order"""
-        order = Order(1234, ["chicken", "rice", "vegetables"], 33.00)
-        for item in order.items.copy():
-            self.customer.remove_from_order(order, item)
-        self.assertEqual(order.items, [])
-        self.assertEqual(order.cost, 0)
-
-    def test_get_receipt_empty_order(self):
-        """Test getting receipt for empty order"""
-        order = self.customer.create_order()
-        expected_output = f"{self.customer.name}:\n-----\n-----\n0\n"
-        captured_output = io.StringIO()
-        sys.stdout = captured_output
-        self.customer.get_receipt(order)
-        sys.stdout = sys.__stdout__
-        self.assertEqual(captured_output.getvalue(), expected_output)
-
-    def test_calculate_order_cost_empty(self):
-        """Test calculating cost for empty order"""
-        order = self.customer.create_order()
-        self.assertEqual(self.customer.calculate_order_cost(order), 0)
-
-    def test_calculate_order_cost_multiple_items(self):
-        """Test calculating cost for multiple items"""
-        order = Order()
-        items = ["chicken", "rice", "vegetables"]
-        for item in items:
-            self.customer.add_to_order(order, item)
-        expected_cost = 12.00 + 12.00 + 9.00
-        self.assertEqual(order.cost, expected_cost)
-
-    def test_clear_order(self):
-        """Test clear_order to ensure order is properly cleared"""
-        order = self.customer.create_order()
-        self.customer.menu.menu = {"chicken": 12.00, "rice": 5.00}
-        order.items = ["chicken", "rice"]
-        order.cost = 17.00
-        captured_output = io.StringIO()
-        sys.stdout = captured_output
-        self.customer.clear_order(order)
-        sys.stdout = sys.__stdout__
-        self.assertEqual(order.items, [])
-        self.assertEqual(order.cost, 0)
-        self.assertEqual(captured_output.getvalue(), "Order cleared.\n")
-
-    def test_remove_from_order_not_present(self):
-        """Test remove_from_order when the item is not in the order"""
-        order = self.customer.create_order()
-        self.customer.menu.menu = {"chicken": 12.00, "rice": 5.00}
-        order.items = ["chicken"]
-        captured_output = io.StringIO()
-        sys.stdout = captured_output
-        result = self.customer.remove_from_order(order, "rice")
-        sys.stdout = sys.__stdout__
-        self.assertFalse(result)
-        self.assertEqual(order.items, ["chicken"])
-        self.assertEqual(captured_output.getvalue(), "Not ordered\n")
-
-    def test_add_to_order_item_not_in_menu(self):
-        """Test add_to_order when the item is not on the menu"""
-        order = self.customer.create_order()
-        self.customer.menu.menu = {"chicken": 12.00}
-        captured_output = io.StringIO()
-        sys.stdout = captured_output
-        result = self.customer.add_to_order(order, "rice")
-        sys.stdout = sys.__stdout__
-        self.assertIsNone(result)
-        self.assertEqual(order.items, [])
-        self.assertEqual(captured_output.getvalue(), "Not on menu\n")
-
-    def test_get_receipt_non_empty(self):
-        """Test get_receipt for an order with items"""
-        order = self.customer.create_order()
-        self.customer.menu.menu = {"chicken": 12.00, "rice": 5.00}
-        order.items = ["chicken", "rice"]
-        order.cost = self.customer.calculate_order_cost(order)
-        captured_output = io.StringIO()
-        sys.stdout = captured_output
-        self.customer.get_receipt(order)
-        sys.stdout = sys.__stdout__
-        expected_output = (
-            "Test Customer:\n-----\nchicken .. 12.0\nrice .. 5.0\n-----\n17.0\n"
-        )
-        self.assertEqual(captured_output.getvalue(), expected_output)
-
-    def test_view_order_summary(self):
-        """Test view_order_summary for an order with items"""
-        order = self.customer.create_order()
-        # Set up menu prices
-        self.customer.menu.menu = {"chicken": 12.00, "rice": 5.00, "vegetables": 9.00}
-        order.items = ["chicken", "rice"]
-        order.cost = self.customer.calculate_order_cost(order)
-        captured_output = io.StringIO()
-        sys.stdout = captured_output
-        self.customer.view_order_summary(order)
-        sys.stdout = sys.__stdout__
-        # Expected summary: header, one line per item with cost, then total.
-        expected_output = "Order Summary:\nchicken - $12.0\nrice - $5.0\nTotal: $17.0\n"
-        self.assertEqual(captured_output.getvalue(), expected_output)
-
-
-class TestRestaurant(unittest.TestCase):
-    """Dedicated test class for Restaurant functionality"""
-
-    def setUp(self):
-        self.restaurant = Restaurant()
-
-    def test_restaurant_initialization(self):
-        """Test restaurant initialization"""
-        self.assertIsInstance(self.restaurant.inventory, dict)
-        self.assertIsInstance(self.restaurant.cook_time_in_minutes, dict)
-        self.assertIsInstance(self.restaurant.order_queue, list)
-
-    def test_cook_order_empty_queue(self):
-        """Test cooking order with empty queue"""
-        with self.assertRaises(IndexError):
-            self.restaurant.cook_order()
-
-    def test_inventory_insufficient(self):
-        """Test cooking order with insufficient inventory"""
-        self.restaurant.inventory["chicken"] = 0
-
-        order = Order(1234, ["chicken"], 12.00)
-        self.restaurant.add_to_queue(order)
-        order_id, cook_time = self.restaurant.cook_order()
-
-        self.assertEqual(cook_time, 0)
-
-    def test_cook_order_large_order(self):
-        """Test cooking large order with multiple items"""
-        order = Order(1234, ["chicken", "pork", "vegetables", "rice"], 43.00)
-        self.restaurant.add_to_queue(order)
-        order_id, cook_time = self.restaurant.cook_order()
-
-        expected_time = sum(
-            self.restaurant.cook_time_in_minutes[item] for item in order.items
-        )
-        self.assertEqual(cook_time, expected_time)
-
-    def test_add_to_queue_multiple_orders(self):
-        """Test handling multiple orders in queue"""
-        orders = [
-            Order(1, ["chicken"], 12.00),
-            Order(2, ["pork"], 10.00),
-            Order(3, ["vegetables"], 9.00),
-        ]
-
-        for order in orders:
-            self.restaurant.add_to_queue(order)
-
-        self.assertEqual(len(self.restaurant.order_queue), 3)
-
-        cooked_orders = []
-        while self.restaurant.order_queue:
-            order_id, time = self.restaurant.cook_order()
-            cooked_orders.append(order_id)
-
-        self.assertEqual(cooked_orders, [3, 2, 1])
-
-    def test_inventory_tracking(self):
-        """Test accurate inventory tracking after multiple orders"""
-        initial_inventory = self.restaurant.inventory.copy()
-
-        orders = [Order(1, ["chicken"], 12.00), Order(2, ["chicken"], 12.00)]
-
-        for order in orders:
-            self.restaurant.add_to_queue(order)
-            self.restaurant.cook_order()
-
-        expected_chicken = initial_inventory["chicken"] - 2
-        self.assertEqual(self.restaurant.inventory["chicken"], expected_chicken)
-
-    def test_view_inventory(self):
-        """Test that view_inventory prints the current inventory correctly."""
-        captured_output = io.StringIO()
-        sys.stdout = captured_output
-        self.restaurant.view_inventory()
-        sys.stdout = sys.__stdout__
-        expected_output = "Current Inventory:\n"
-        # Assuming insertion order is preserved
-        for item, quantity in self.restaurant.inventory.items():
-            expected_output += f"{item}: {quantity}\n"
-        self.assertEqual(captured_output.getvalue(), expected_output)
-
-    def test_restock_inventory_existing_item(self):
-        """Test that restock_inventory updates an existing item's quantity and prints confirmation."""
-        captured_output = io.StringIO()
-        sys.stdout = captured_output
-        original_quantity = self.restaurant.inventory["chicken"]
-        self.restaurant.restock_inventory("chicken", 5)
-        sys.stdout = sys.__stdout__
-        expected_message = f"Restocked chicken. New quantity: {original_quantity + 5}\n"
-        self.assertEqual(captured_output.getvalue(), expected_message)
-        self.assertEqual(self.restaurant.inventory["chicken"], original_quantity + 5)
-
-    def test_restock_inventory_nonexistent_item(self):
-        """Test that restock_inventory prints an error message for an item not in the inventory."""
-        captured_output = io.StringIO()
-        sys.stdout = captured_output
-        self.restaurant.restock_inventory("beef", 5)
-        sys.stdout = sys.__stdout__
-        self.assertEqual(captured_output.getvalue(), "beef not found in inventory.\n")
-
-    def test_maximum_cooking_capacity(self):
-        """Test cooking more orders than inventory allows"""
-        chicken_inventory = self.restaurant.inventory["chicken"]
-        orders = [Order(i, ["chicken"], 12.00) for i in range(chicken_inventory + 2)]
-
-        for order in orders:
-            self.restaurant.add_to_queue(order)
-
-        valid_cooks = 0
-        while self.restaurant.order_queue:
-            _, time = self.restaurant.cook_order()
-            if time > 0:
-                valid_cooks += 1
-
-        self.assertEqual(valid_cooks, chicken_inventory)
-
-    def test_cook_time_helper(self):
-        """Test that cook_time_helper returns the correct cooking time for each item."""
-        self.assertEqual(self.restaurant.cook_time_helper("chicken"), 15)
-        self.assertEqual(self.restaurant.cook_time_helper("pork"), 12)
-        self.assertEqual(self.restaurant.cook_time_helper("vegetables"), 10)
-        self.assertEqual(self.restaurant.cook_time_helper("rice"), 30)
-
-    def test_inventory_helper_success(self):
-        """Test that inventory_helper decrements the inventory and returns True when sufficient stock exists."""
-        original_quantity = self.restaurant.inventory["pork"]
-        result = self.restaurant.inventory_helper("pork")
-        self.assertTrue(result)
-        self.assertEqual(self.restaurant.inventory["pork"], original_quantity - 1)
-
-    def test_inventory_helper_failure(self):
-        """Test that inventory_helper returns False and does not decrement inventory when stock is insufficient."""
-        self.restaurant.inventory["pork"] = 0
-        result = self.restaurant.inventory_helper("pork")
-        self.assertFalse(result)
-        self.assertEqual(self.restaurant.inventory["pork"], 0)
-
-    def test_average_cook_time_empty_queue(self):
-        """Test that average_cook_time returns 0 and prints a message when the order queue is empty."""
-        captured_output = io.StringIO()
-        sys.stdout = captured_output
-        avg_time = self.restaurant.average_cook_time()
-        sys.stdout = sys.__stdout__
-        self.assertEqual(avg_time, 0)
-        self.assertIn("No orders in queue.", captured_output.getvalue())
-
-    def test_average_cook_time_nonempty_queue(self):
-        """Test that average_cook_time calculates the correct average cooking time for orders in the queue."""
-        # Create two orders with one item each
-        order1 = Order(1, ["chicken"], 12.00)
-        order2 = Order(2, ["rice"], 30.00)
-        self.restaurant.add_to_queue(order1)
-        self.restaurant.add_to_queue(order2)
-        total_time = (
-            self.restaurant.cook_time_in_minutes["chicken"]
-            + self.restaurant.cook_time_in_minutes["rice"]
-        )
-        expected_avg = total_time / 2
-        captured_output = io.StringIO()
-        sys.stdout = captured_output
-        avg_time = self.restaurant.average_cook_time()
-        sys.stdout = sys.__stdout__
-        self.assertAlmostEqual(avg_time, expected_avg)
-        self.assertIn(
-            f"Average cooking time: {expected_avg:.2f} minutes.",
-            captured_output.getvalue(),
-        )
-
-
-class TestIntegration(unittest.TestCase):
-    """Integration tests for the entire system"""
-
-    def setUp(self):
-        self.customer = Customer("Integration Test")
-        self.restaurant = Restaurant()
-
-    def test_full_order_flow(self):
-        """Test complete flow from order creation to cooking"""
-        order = self.customer.create_order()
-        self.customer.add_to_order(order, "chicken")
-        self.customer.add_to_order(order, "rice")
-
-        self.assertEqual(len(order.items), 2)
-        self.assertEqual(order.cost, 24.00)
-
-        self.restaurant.add_to_queue(order)
-        order_id, cook_time = self.restaurant.cook_order()
-
-        self.assertEqual(order_id, order.id)
-        self.assertEqual(cook_time, 45)  # 15 for chicken + 30 for rice
-        self.assertEqual(self.restaurant.inventory["chicken"], 3)
-        self.assertEqual(self.restaurant.inventory["rice"], 6)
-
-    def test_multiple_customers_same_restaurant(self):
-        """Test multiple customers ordering from same restaurant"""
-        customers = [Customer(f"Customer {i}") for i in range(3)]
-        orders = []
-
-        for customer in customers:
-            order = customer.create_order()
-            customer.add_to_order(order, "chicken")
-            orders.append(order)
-            self.restaurant.add_to_queue(order)
-
-        processed_orders = []
-        while self.restaurant.order_queue:
-            order_id, _ = self.restaurant.cook_order()
-            processed_orders.append(order_id)
-
-        self.assertEqual(len(processed_orders), 3)
-        self.assertEqual(self.restaurant.inventory["chicken"], 1)  # 4 - 3 orders
-
-
-if __name__ == "__main__":
-    unittest.main()
+import pytest
+from unittest.mock import patch
+
+from study_problem_classes import Menu, Order, Customer, Restaurant
+import study_problem_tester as testfile
+
+
+@pytest.fixture()
+def customer():
+    customer = Customer("amy")
+    customer.order[1234] = Order(1234)
+    return customer
+
+
+@pytest.fixture()
+def customer_with_order():
+    customer = Customer("bob")
+    customer.order[1234] = Order(1234, ["beef", "stew"], 17.00)
+    customer.order[5678] = Order(5678, ["stew"], 5.00)
+    return customer
+
+
+@pytest.fixture()
+def menu():
+    menu = Menu()
+    menu.dishes = {"beef": 12.00, "stew": 5.00, "vegetables": 9.00}
+    return menu
+
+
+@pytest.fixture()
+def restaurant():
+    restaurant = Restaurant()
+    restaurant.cook_time_in_minutes = {"beef": 3, "stew": 2, "vegetables": 1}
+    restaurant.inventory = {"beef": 1, "stew": 1, "vegetables": 1}
+    return restaurant
+
+
+def test_view_menu_with_regular_menu(menu, capsys):
+    """Test view_menu with complete menu"""
+    testfile.view_menu(menu)
+    captured = capsys.readouterr()
+    # Expected: header plus each item on a new line.
+    expected_output = "item | cost\nbeef | 12.0\nstew | 5.0\nvegetables | 9.0\n"
+    assert captured.out == expected_output
+
+
+def test_view_menu_empty_menu(menu, capsys):
+    """Test view_menu with empty menu"""
+    menu.dishes = {}
+    testfile.view_menu(menu)
+    captured = capsys.readouterr()
+    assert captured.out == "item | cost\n"
+
+
+def test_create_order_is_4_digit(customer):
+    """Test that the Order ID is a four-digit number"""
+    with patch("random.randint", return_value=1000):
+        testfile.create_order(customer)
+        assert isinstance(customer.order[1000], Order)
+
+
+def test_create_order_is_unique(customer):
+    """Test that the Order ID is a four-digit number"""
+    with patch("random.randint", side_effect=[1234, 5678]):
+        order_id = testfile.create_order(customer)
+    assert order_id != 1234
+    assert order_id == 5678
+    assert order_id in customer.order
+
+
+def test_create_order_multiple_orders(customer):
+    """Test creating multiple orders generates unique IDs"""
+    for i in range(10):
+        testfile.create_order(customer)
+    assert len(customer.order.keys()) == 11
+
+
+def test_clear_order(customer, menu, capsys):
+    """Test clear_order to ensure order is properly cleared"""
+    menu.dishes = {"chicken": 12.00, "rice": 5.00}
+    id = testfile.create_order(customer)
+    customer.order[id].items = ["chicken", "rice"]
+    customer.order[id].cost = 17.00
+    testfile.clear_order(customer, id)
+    captured = capsys.readouterr()
+    assert customer.order[id].items == []
+    assert customer.order[id].cost == 0
+    assert captured.out == "Order cleared.\n"
+
+
+def test_view_order_summary(menu, capsys):
+    """Test view_order_summary is printing"""
+    order = Order("Bobby", ["beef", "stew"], 17)
+    testfile.view_order_summary(order, menu)
+    captured = capsys.readouterr()
+    expected_output = (
+            "Order Summary:\nbeef - $12.00\nstew - $5.00\nTotal: $17.00\n"
+    )
+    assert expected_output == captured.out
+
+
+def test_add_to_order_success(customer, menu):
+    order_id = 1234
+    item = "beef"
+    with patch("study_problem_tester.calculate_order_cost", return_value=12.00):
+        result = testfile.add_to_order(customer, order_id, menu, item)
+
+    assert result == item
+    assert item in customer.order[order_id].items
+    assert customer.order[order_id].cost == 12.00
+
+
+def test_add_to_order_multiple_items(customer, menu):
+    order_id = 1234
+    with patch("study_problem_tester.calculate_order_cost", return_value=17.00):
+        testfile.add_to_order(customer, order_id, menu, "beef")
+        testfile.add_to_order(customer, order_id, menu, "stew")
+
+    assert "beef" in customer.order[order_id].items
+    assert "stew" in customer.order[order_id].items
+
+
+def test_add_to_order_multiple_same_items(customer, menu):
+    """Test adding same item multiple times"""
+    order_id = 1234
+    with patch("study_problem_tester.calculate_order_cost", return_value=24.00):
+        testfile.add_to_order(customer, order_id, menu, "beef")
+        testfile.add_to_order(customer, order_id, menu, "beef")
+
+    assert customer.order[order_id].items.count("beef") == 2
+    assert customer.order[order_id].cost == 24.00
+
+
+def test_add_to_order_item_not_on_menu(customer, menu, capsys):
+    order_id = 1234
+    item = "sushi"
+
+    result = testfile.add_to_order(customer, order_id, menu, item)
+
+    assert result is None
+    assert item not in customer.order[order_id].items
+    captured = capsys.readouterr()
+    assert "Not on menu\n" == captured.out
+
+
+def test_add_to_order_no_order_found(customer, menu, capsys):
+    order_id = 9999  # Nonexistent order
+    item = "burger"
+
+    result = testfile.add_to_order(customer, order_id, menu, item)
+
+    assert result is None
+    captured = capsys.readouterr()
+    assert "No order found\n" == captured.out
+
+
+def test_remove_from_order_success(customer_with_order, menu, capsys):
+    order_id = 1234
+    item = "beef"
+
+    result = testfile.remove_from_order(customer_with_order, order_id, menu, item)
+
+    assert result is True
+    assert item not in customer_with_order.order[order_id].items
+    with patch("study_problem_tester.calculate_order_cost", return_value=5.00):
+        customer_with_order.order[order_id].cost = 5.00
+
+    captured = capsys.readouterr()
+    assert "Removed beef\n" == captured.out
+
+
+def test_remove_from_order_not_in_order(customer_with_order, menu, capsys):
+    order_id = 1234
+    item = "sushi"
+
+    result = testfile.remove_from_order(customer_with_order, order_id, menu, item)
+
+    assert result is False
+    captured = capsys.readouterr()
+    assert "Not ordered\n" == captured.out
+
+
+def test_remove_from_order_no_order_found(customer, menu, capsys):
+    order_id = 9999  # Nonexistent order
+    item = "burger"
+
+    result = testfile.remove_from_order(customer, order_id, menu, item)
+
+    assert result is False
+    captured = capsys.readouterr()
+    assert "No order found\n" == captured.out
+
+
+def test_calculate_order_cost(customer_with_order, menu):
+    order = customer_with_order.order[1234]
+    cost = testfile.calculate_order_cost(order, menu)
+    assert cost == 17.00
+
+
+def test_get_receipt(customer_with_order, menu, capsys):
+    testfile.get_receipt(customer_with_order, menu)
+    captured = capsys.readouterr()
+    expected = (
+        "bob\n"
+        "-----\n"
+        "1234\n"
+        "Order Summary:\n"
+        "beef - $12.00\n"
+        "stew - $5.00\n"
+        "Total: $17.00\n"
+        "-----\n"
+        "5678\n"
+        "Order Summary:\n"
+        "stew - $5.00\n"
+        "Total: $5.00\n"
+        "-----\n"
+        "$22.00\n"
+    )
+    assert expected == captured.out
+
+
+def test_add_to_queue_success(restaurant, customer):
+    testfile.add_to_queue(restaurant, customer)
+    assert customer.order[1234] in restaurant.order_queue
+
+
+def test_add_to_queue_multiple_orders(restaurant, customer_with_order):
+    testfile.add_to_queue(restaurant, customer_with_order)
+    assert customer_with_order.order[1234] in restaurant.order_queue
+    assert customer_with_order.order[5678] in restaurant.order_queue
+
+
+def test_cook_order_success(restaurant, customer_with_order):
+    testfile.add_to_queue(restaurant, customer_with_order)
+
+    result = testfile.cook_order(restaurant)
+    assert (5678, 2) == result
+    assert len(restaurant.order_queue) == 1
+
+
+def test_cook_order_empty_queue(restaurant):
+    assert len(restaurant.order_queue) == 0
+    result = testfile.cook_order(restaurant)
+    assert (-1, 0) == result
+
+
+def test_cook_order_no_ingredients(restaurant, customer_with_order):
+    testfile.add_to_queue(restaurant, customer_with_order)
+
+    result = testfile.cook_order(restaurant)
+    assert (5678, 2) == result
+    assert len(restaurant.order_queue) == 1
+
+    result = testfile.cook_order(restaurant)
+    assert (-1, 0) == result
+    assert len(restaurant.order_queue) == 0
+
+
+def test_cook_time_helper_success(restaurant):
+    assert testfile.cook_time_helper(restaurant, "beef") == 3
+    assert testfile.cook_time_helper(restaurant, "stew") == 2
+    assert testfile.cook_time_helper(restaurant, "vegetables") == 1
+
+
+def test_cook_time_helper_fail(restaurant):
+    assert testfile.cook_time_helper(restaurant, "spoon") == -1
+
+
+def test_inventory_helper_success(restaurant):
+    original_quantity = restaurant.inventory["stew"]
+    result = testfile.inventory_helper(restaurant, "stew")
+    assert result is True
+    assert restaurant.inventory["stew"] == original_quantity - 1
+
+
+def test_inventory_helper_failure(restaurant):
+    restaurant.inventory["stew"] = 0
+    result = testfile.inventory_helper(restaurant, "stew")
+    assert result is False
+    assert restaurant.inventory["stew"] == 0
+
+
+def test_average_cook_time_empty_queue(restaurant, capsys):
+    avg_time = testfile.average_cook_time(restaurant)
+    captured = capsys.readouterr()
+    assert avg_time == 0
+    assert "No orders in queue.\n" == captured.out
+
+
+def test_average_cook_time_nonempty_queue(restaurant, customer_with_order, capsys):
+    testfile.add_to_queue(restaurant, customer_with_order)
+    total_time = (
+                restaurant.cook_time_in_minutes["beef"]
+                + 2 * restaurant.cook_time_in_minutes["stew"]
+            )
+    expected_avg = total_time / 2
+    avg_time = testfile.average_cook_time(restaurant)
+    captured = capsys.readouterr()
+    assert avg_time == pytest.approx(expected_avg)
+    assert f"Average cooking time: {expected_avg:.2f} minutes.\n" == captured.out

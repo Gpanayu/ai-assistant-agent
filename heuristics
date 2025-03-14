@@ -1,0 +1,115 @@
+if participants start the project:
+    the system should notify all users which sub-task tree they chose
+
+> the probing message will have qualitative severity scale that asks for how
+> much help the participant needs (ranging from a quick double check to
+> completely lost)
+
+** Help Monitoring Strategy 1: Implicit Observations **
+
+// find a theory to back this up not just from observations
+
+if a participant is taking more than 5+ minutes on completing a task:
+    the system should send a probing message to the user
+
+    if the particpant needs help:
+        refer to the help tree
+
+    if the participant does not need help:
+        the system should reset the monitoring timer for a short amount of time
+
+if a participant is testing the same function more than 7 times:
+    the system should send a probing message to the user
+
+    if the particpant needs help:
+        refer to the help tree
+
+    if the participant does not need help:
+        the system should reset the monitoring timer for a short amount of time
+
+
+if the particpant needs help:
+
+    if the participant needs a lot of help completing the task:
+        the system should notify teammates that are waiting
+
+        if no teammates are done with their tasks:
+            the system should analyze the state of each teammates on the tree if
+            a teammate has completed more tasks and is moving down the tree send
+            a notification
+
+    if the participant needs a moderate amount of help completing the task:
+        the system should notify teammates that are done with their task to
+        assist the struggling teammate
+
+        if no teammates are done with their tasks:
+            the system should analyze the state of each teammates code and check
+            for less than 20% or more than 75% completion and send a notification
+
+    if the partipcant needs a small amount of help completing the task:
+        the system should send a notification to any teammate as the
+        interruption time should be minimal
+
+    if teammates cannot/refuse to help:
+        the system should notify the requester that no available resources
+
+        if there is another task available high up on the task priority
+        tree:
+            the system can propose to reallocate the work to a task that is
+            higher on the priority tree
+
+
+** Help Monitoring Strategy 2: Code State Observations **
+
+// find theory such as codellaborator but team based
+
+if a participant is less than than 70% done with the task after 5 minutes:
+    the system should send a probing message to the user
+
+    if the particpant needs help:
+        refer to the help tree
+
+    if the participant does not need help:
+        the system should reset the monitoring timer for a short amount of time
+
+if a participant is testing the same function more than 7 times:
+    the system should send a probing message to the user
+
+    if the particpant needs help:
+        refer to the help tree
+
+    if the participant does not need help:
+        the system should reset the monitoring timer for a short amount of time
+
+if the particpant needs help:
+
+    if the participant needs a lot of help completing the task:
+        the system should notify teammates that are done with their task to
+        assist the struggling teammate
+
+        if no teammates are done with their tasks:
+            the system should analyze the state of each teammates code and check
+            for less than 10% or more than 90% completion and send a notification
+            to that teammate
+
+    if the participant needs a moderate amount of help completing the task:
+        the system should notify teammates that are done with their task to
+        assist the struggling teammate
+
+        if no teammates are done with their tasks:
+            the system should analyze the state of each teammates code and check
+            for less than 20% or more than 75% completion and send a notification
+
+    if the partipcant needs a small amount of help completing the task:
+        the system should send a notification to any teammate as the
+        interruption time should be minimal
+
+    if teammates cannot/refuse to help:
+        the system should notify the requester that no available resources
+
+        if there is another task available high up on the task priority
+        tree:
+            the system can propose to reallocate the work to a task that is
+            higher on the priority tree
+
+

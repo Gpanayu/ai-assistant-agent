@@ -230,9 +230,9 @@ class FunctionReplacer:
             print("Running test cases...")
             test_cases = ""
             if not self.test_full:
-                parts = re.split(r'_', self.function_name, maxsplit=2)
-                print(f"test_{parts[0] + "_" + parts[1]}")
-                test_cases = f"{parts[0] + "_" + parts[1]}"
+                parts = re.split(r"_", self.function_name, maxsplit=2)
+                test_cases = f"{parts[0]}_{parts[1]}"
+                print(f"test_{test_cases}")
 
             result = subprocess.run(
                 [
@@ -244,18 +244,18 @@ class FunctionReplacer:
                     "--tb=short",
                     "-q",
                     "--color=no",
-                    "-rf"
+                    "-rf",
                 ],
                 capture_output=True,
                 text=True,
             )
 
             if not self.test_full:
-                parts = re.split(r'\n', result.stdout, maxsplit=2)
+                parts = re.split(r"\n", result.stdout, maxsplit=2)
                 await graph_manager.update_completed(
-                        node_id=self.function_name,
-                        completed=parts[0].count("."),
-                        remaining=len(parts[0].split(" ")[0])
+                    node_id=self.function_name,
+                    completed=parts[0].count("."),
+                    remaining=len(parts[0].split(" ")[0]),
                 )
             print(result.stdout)
             # print(result.stderr)
@@ -479,7 +479,9 @@ def lookup_description(node):
         if looked_up.claimed_by != "":
             html_str += f"<p>Claimed by <b>{looked_up.claimed_by}</b></p>"
         if looked_up.total != 0:
-            html_str += f"<p>Progress: <b>{looked_up.completed}/{looked_up.total}</b></p>"
+            html_str += (
+                f"<p>Progress: <b>{looked_up.completed}/{looked_up.total}</b></p>"
+            )
 
         return {"html": html_str}
     return {"html": ""}

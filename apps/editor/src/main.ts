@@ -46,7 +46,6 @@ ws.addEventListener("message", (event) => {
     ytext.insert(0, data["payload"]["doc"])
   }
   if(data["event"] === "notification") {
-    console.log("hi")
     document.querySelector<HTMLSpanElement>("#notification")!.classList.add("active")
     document.querySelector<HTMLSpanElement>("#content")!.innerText = data["payload"]["prompt"]
     const options = document.querySelector<HTMLSpanElement>("#options")!
@@ -197,11 +196,11 @@ for (let i = 0; i < tabs.length; i++) {
 }
 
 async function runCode() {
-  const collab = document.querySelector('.tab-pane[data-pane="0"].active')
+  const collab = document.querySelector<HTMLSelectElement>('#environment').value
   let channel = ""
   let code: string | YText = ""
 
-  if (collab) {
+  if (collab === "0") {
     channel = "all"
     code = ytext
   }
@@ -320,7 +319,7 @@ function acceptNotif() {
         'Accept': 'application/json',
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({id: id, choice: selectedOption.id})
+      body: JSON.stringify({id: animalId, choice: selectedOption.id})
     })
     console.log(selectedOption.id);
   }

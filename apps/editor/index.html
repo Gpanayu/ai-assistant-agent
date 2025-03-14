@@ -45,25 +45,16 @@
     <div class="topContainer">
       <div>
         <h1>Collaborative Editor</h1>
-        <span id="id">id: </span>
-      </div>
-      <div>
-        <input
-              id = "nameInput"
-              name="nameInput"
-              type="text"
-              placeholder="Name"
-              autocomplete="off"/>
-        <button id="update">Update</button>
       </div>
     </div>
     <ul id="tabs">
-      <div>
-        <li class="tab active" data-tab="0">Collab</li>
-        <li class="tab" data-tab="1">Playground</li>
-      </div>
+      <span id="id">id: </span>
 
       <section class="buttons">
+        <select id="environment">
+          <option value="0">Collab</option>
+          <option value="1">Playground</option>
+        </select>
         <button class="button-tab" id="run">
           <i class="fa-solid fa-play"></i>
           Run
@@ -74,21 +65,22 @@
         </button>
         <button class="button-tab" id="clear">
           <i class="fa-solid fa-broom"></i>
-          Clear
+          Clear Output
         </button>
         <button class="button-tab" id="toggle">
-          <i class="fa-solid fa-grip"></i>
-          Toggle View
+          <i class="fa-solid fa-flag"></i>
+          Flag For Help
         </button>
       </section>
     </ul>
     <main id="editorContainer" class="vertical">
-      <div id="editor" class="editor tab-pane active" data-pane="0"></div>
-      <div id="secondary" class="editor tab-pane" data-pane="1"></div>
-      <div id="split" class="split-v">
+      <div id="editor" class="editor" data-pane="0"></div>
+      <div id="secondary" class="editor" data-pane="1"></div>
+      <div id="split" class="split-h">
         <div id="output"></div>
         <svg id="smm"></svg>
       </div>
+      <div class="notification-bg"/>
       <div id="notification" class="notification">
         <div>
           <span id="content">Hey!</span>
