@@ -201,9 +201,20 @@ class FunctionReplacer:
 
     def replace_function_in_file(self, function_code: str):
         self.test_full = False
-        function_node = ast.parse(dedent(function_code)).body[0]
-        if not isinstance(function_node, ast.FunctionDef):
-            print("Error: Provided code is not a function definition.")
+        try:
+            parsed_code = ast.parse(dedent(function_code))
+        except SyntaxError as e:
+            print(f"Error: Invalid Python syntax in function code.\n{e}")
+            return
+
+        function_node = None
+        for node in parsed_code.body:
+            if isinstance(node, ast.FunctionDef):
+                function_node = node
+                break  
+
+        if function_node is None:
+            print("Error: Provided code does not contain a valid function definition.")
             return
 
         function_name = function_node.name
@@ -216,7 +227,7 @@ class FunctionReplacer:
         class FunctionTransformer(ast.NodeTransformer):
             def visit_FunctionDef(self, node):
                 if node.name == function_name:
-                    return function_node  # Replace the old function with the new one
+                    return function_node  
                 return node
 
         new_tree = FunctionTransformer().visit(tree)
