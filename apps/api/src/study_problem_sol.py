@@ -1,9 +1,9 @@
 import random
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from study_problem_classes import Menu, Order, Customer, Restaurant
 
 
-def view_menu(customer: Customer):
+def view_menu(menu: Menu):
     """
     Display the menu items with their cost in the following format:
 
@@ -13,27 +13,29 @@ def view_menu(customer: Customer):
     The first line is a header followed by each item and its corresponding cost on a new line.
     """
     print("item | cost")
-
-    for k, v in customer.menu.menu.items():
+    for k, v in menu.dishes.items():
         print(f"{k} | {v}")
 
 
-def create_order(customer: Customer) -> Order:
+def create_order(customer: Customer) -> int:
     """
     Create a new order for the customer.
 
     The order will have a 4-digit unique id, an empty list of items, and a cost of 0.
 
-    Returns:
-        Order: A new Order instance.
+    Note: Check if the uuid is not already an order, if it is pick a new uuid
     """
     uuid = random.randint(1000, 9999)
-    return Order(uuid)
+    while uuid in customer.order:
+        uuid = random.randint(1000, 9999)
+    customer.order[uuid] = Order(uuid)
+    return uuid
 
 
-def clear_order(customer: Customer, order: Order):
+def clear_order(customer: Customer, order_id: int):
     """
-    Clear the order by removing all items and resetting the cost to zero.
+    Clear the order from the customer by removing all items and resetting the
+    cost to zero.
 
     After clearing, prints:
         Order cleared.
@@ -41,37 +43,38 @@ def clear_order(customer: Customer, order: Order):
     Args:
         order (Order): The order to be cleared.
     """
-    order.items.clear()
-    order.cost = 0
+    customer.order[order_id].items.clear()
+    customer.order[order_id].cost = 0
     print("Order cleared.")
 
 
-def view_order_summary(customer: Customer, order: Order):
+def view_order_summary(order: Order, menu: Menu):
     """
     Print a summary of the order including each item with its cost and the total cost.
 
+    Note: Use `format(x, ".2f")` to format to the second decimal
+
     Expected output format:
         Order Summary:
-        chicken - $12.0
-        pork - $10.0
-        Total: $22.0
+        chicken - $12.00
+        pork - $10.00
+        Total: $22.00
 
     Args:
         order (Order): The order to summarize.
     """
-
     print("Order Summary:")
     for item in order.items:
-        print(f"{item} - ${customer.menu.menu[item]}")
-    print(f"Total: ${order.cost}")
+        print(f"{item} - ${format(menu.dishes[item], ".2f")}")
+    print(f"Total: ${format(calculate_order_cost(order, menu), ".2f")}")
 
 
-def add_to_order(customer: Customer, order: Order, item: str):
+def add_to_order(customer: Customer, order_id: int, menu: Menu, item: str):
     """
     Add an item to the order if it exists on the menu and update the total cost.
 
     Args:
-        order (Order): The order to update.
+        order_id (int): The order to update.
         item (str): The item to add.
 
     Returns:
@@ -80,19 +83,23 @@ def add_to_order(customer: Customer, order: Order, item: str):
     Prints:
         "Added [item]: [cost]" if the item is on the menu.
         "Not on menu" if the item is not available.
+        "No order found" if the order_id is not found.
     """
-    if item in customer.menu.menu:
-        order.items.append(item)
-        order.cost = calculate_order_cost(customer, order)
-        print(f"Added {item}: {customer.menu.menu[item]}")
-        return item
+    if order_id in customer.order:
+        order = customer.order[order_id]
+        if item in menu.dishes:
+            order.items.append(item)
+            order.cost = calculate_order_cost(order, menu)
+            print(f"Added {item}: {menu.dishes[item]}")
+            return item
+        print("Not on menu")
+    else:
+        print("No order found")
 
-    print("Not on menu")
 
-
-def remove_from_order(customer: Customer, order: Order, item: str) -> bool:
+def remove_from_order(customer: Customer, order_id: int, menu: Menu, item: str) -> bool:
     """
-    Remove an item from the order if it exists and update the total cost.
+    Remove an item from the customer's order if it exists and update the total cost.
 
     Args:
         order (Order): The order from which the item should be removed.
@@ -104,18 +111,25 @@ def remove_from_order(customer: Customer, order: Order, item: str) -> bool:
     Prints:
         "Removed [item]" if the removal is successful.
         "Not ordered" if the item is not in the order.
+        "No order found" if the order_id is not found.
     """
-    if item in order.items:
-        order.items.remove(item)
-        order.cost = calculate_order_cost(customer, order)
-        print(f"Removed {item}")
-        return True
 
-    print("Not ordered")
-    return False
+    if order_id in customer.order:
+        order = customer.order[order_id]
+        if item in order.items:
+            order.items.remove(item)
+            order.cost = calculate_order_cost(order, menu)
+            print(f"Removed {item}")
+            return True
+        else:
+            print("Not ordered")
+            return False
+    else:
+        print("No order found")
+        return False
 
 
-def calculate_order_cost(customer: Customer, order: Order):
+def calculate_order_cost(order: Order, menu: Menu):
     """
     Calculate the total cost of the order based on the items ordered.
 
@@ -127,42 +141,56 @@ def calculate_order_cost(customer: Customer, order: Order):
     """
     cost = 0
     for i in order.items:
-        cost += customer.menu.menu[i]
+        cost += menu.dishes[i]
     return cost
 
 
-def get_receipt(customer: Customer, order: Order):
+def get_receipt(customer: Customer, menu: Menu):
     """
-    Print the receipt in the following format:
+    Print all Orders from the customer:
 
         [Customer name]:
         -----
-        [item ordered] .. [cost]
-        [item ordered] .. [cost]
+        [Order Id]
+        Order Summary:
+        [item ordered] - $[cost of item]
+        [item ordered] - $[cost of item]
+        Total: $[total cost of order]
         -----
-        [total cost]
+        [Order Id]
+        Order Summary:
+        [item ordered] - $[cost of item]
+        [item ordered] - $[cost of item]
+        Total: $[total cost of order]
+        -----
+        $[total cost of all orders]
 
     The output must exactly follow this format.
 
     Args:
-        order (Order): The order for which to generate the receipt.
+        customer (Customer): The customer orders to generate the receipt.
+        menu (Menu): The menu of the restaurant.
     """
-    print(f"{customer.name}:")
+    total = 0
+    print(customer.name)
     print("-----")
-    for item in order.items:
-        print(f"{item} .. {customer.menu.menu[item]}")
-    print("-----")
-    print(f"{order.cost}")
+    for k, v in customer.order.items():
+        print(k)
+        view_order_summary(v, menu)
+        print("-----")
+        total += customer.order[k].cost
+    print(f"${format(total, ".2f")}")
 
 
-def add_to_queue(restaurant: Restaurant, order: Order):
+def add_to_queue(restaurant: Restaurant, customer: Customer):
     """
-    Add an incoming order to the restaurant's order queue.
+    Add an incoming customer orders to the restaurant's order queue.
 
     Args:
-        order (Order): The order to be added.
+        customer (Customer): The customer whose order is to be added.
     """
-    restaurant.order_queue.append(order)
+    for id, order in customer.order.items():
+        restaurant.order_queue.append(order)
 
 
 def cook_order(restaurant: Restaurant) -> Tuple[str, int]:
@@ -174,26 +202,20 @@ def cook_order(restaurant: Restaurant) -> Tuple[str, int]:
 
     Returns:
         tuple: A tuple containing the order id and the total cooking time in minutes.
+        If the queue is empty or the inventory runs out return (-1, 0)
     """
+    if restaurant.order_queue:
+        order = restaurant.order_queue.pop()
+        time = 0
+        for item in order.items:
+            if inventory_helper(restaurant, item):
+                time += cook_time_helper(restaurant, item)
+            else:
+                return (-1, 0)
 
-    order = restaurant.order_queue.pop()
-    time = 0
-    for item in order.items:
-        if inventory_helper(restaurant, item):
-            time += cook_time_helper(restaurant, item)
-    return (order.id, time)
+        return (order.id, time)
 
-
-def view_inventory(restaurant: Restaurant):
-    """
-    Display the current inventory in the following format:
-
-        Current Inventory:
-        item: quantity
-    """
-    print("Current Inventory:")
-    for item, quantity in restaurant.inventory.items():
-        print(f"{item}: {quantity}")
+    return (-1, 0)
 
 
 def restock_inventory(restaurant: Restaurant, item: str, amount: int):
@@ -223,9 +245,9 @@ def cook_time_helper(restaurant: Restaurant, item: str):
         item (str): The name of the item.
 
     Returns:
-        int: The cooking time in minutes for the item.
+        int: The cooking time in minutes for the item or -1 if not found.
     """
-    return restaurant.cook_time_in_minutes[item]
+    return restaurant.cook_time_in_minutes[item] if item in restaurant.cook_time_in_minutes else -1
 
 
 def inventory_helper(restaurant: Restaurant, item: str):
@@ -271,21 +293,22 @@ def average_cook_time(restaurant: Restaurant):
 
 restaurant = Restaurant()
 customer = Customer("Alice")
+menu = Menu()
 
 
 def run():
-    view_menu(customer)
-    order = create_order(customer)
-    add_to_order(customer, order, "chicken")
-    add_to_order(customer, order, "beef")
-    add_to_order(customer, order, "vegetables")
+    view_menu(menu)
+    id = create_order(customer)
+    add_to_order(customer, id, menu, "chicken")
+    add_to_order(customer, id, menu, "beef")
+    add_to_order(customer, id, menu, "vegetables")
 
-    remove_from_order(customer, order, "vegetables")
-    remove_from_order(customer, order, "beef")
+    remove_from_order(customer, id, menu, "vegetables")
+    remove_from_order(customer, id, menu, "beef")
 
-    get_receipt(customer, order)
+    get_receipt(customer, menu)
 
-    add_to_queue(restaurant, order)
+    add_to_queue(restaurant, customer)
     (id, time) = cook_order(restaurant)
     print(id, time)
 

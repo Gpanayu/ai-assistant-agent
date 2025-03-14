@@ -211,7 +211,7 @@ class FunctionReplacer:
         for node in parsed_code.body:
             if isinstance(node, ast.FunctionDef):
                 function_node = node
-                break  
+                break
 
         if function_node is None:
             print("Error: Provided code does not contain a valid function definition.")
@@ -227,7 +227,7 @@ class FunctionReplacer:
         class FunctionTransformer(ast.NodeTransformer):
             def visit_FunctionDef(self, node):
                 if node.name == function_name:
-                    return function_node  
+                    return function_node
                 return node
 
         new_tree = FunctionTransformer().visit(tree)
@@ -253,7 +253,7 @@ class FunctionReplacer:
                     "-k",
                     test_cases,
                     "--tb=short",
-                    "-q",
+                    "-vv",
                     "--color=no",
                     "-rf",
                 ],

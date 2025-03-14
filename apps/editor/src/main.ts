@@ -150,7 +150,7 @@ let mainView = new EditorView({
 })
 
 let secondaryView = new EditorView({
-  doc: "# Personal Playground\n# Code will not be shared with others\n\nprint('hello playground')",
+  doc: `# Personal Playground\n# Code will not be shared with others\nfrom study_problem_classes import Menu, Order, Customer, Restaurant\n\nprint('hello playground')`,
   extensions: [basicSetup, python(), extension(ws), keymap.of([indentWithTab]), oneDark ],
   parent: document.querySelector<HTMLDivElement>("#secondary")!
 })
@@ -168,7 +168,6 @@ document.querySelector("#run")!.addEventListener("click", runCode);
 document.querySelector("#test")!.addEventListener("click", testCode);
 document.querySelector("#clear")!.addEventListener("click", clearCode);
 document.querySelector("#toggle")!.addEventListener("click", toggleView);
-document.querySelector("#update")!.addEventListener("click", updateName);
 document.querySelector("#close")!.addEventListener("click", closeNotif)
 document.querySelector("#accept")!.addEventListener("click", acceptNotif)
 
