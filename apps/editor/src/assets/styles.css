@@ -25,10 +25,16 @@ h1, h4 {
 #editorContainer {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
-  column-gap: 10px;
+  grid-template-rows: auto 1fr;
 
   height: 90vh;
+  overflow: hidden;
+}
+
+.editor {
+  min-height: 25vh;
+  max-height: 75vh;
+  overflow: none;
 }
 
 .horizontal {
@@ -44,18 +50,29 @@ h1, h4 {
   display: inline-block;
 }
 
+#split {
+  min-height: 300px;
+  height: 500px;
+  max-height: 800px;
+}
 
 .split-h {
   display: grid;
   grid-template-columns: 50% 50%;
-  max-height: 50vh;
+  grid-template-rows: 4px 1fr;
   width: 100%;
   grid-column: span 2;
 }
 
+.handle {
+  grid-column: span 2;
+  background-color: #ccc;
+  cursor: ns-resize;
+}
+
 #smm {
-  background-color: var(--secondary-bg-color);
-  filter: hue-rotate(20deg);
+  background-color: hsl(from var(--secondary-bg-color) h s 30%);
+  /* filter:  */
   height: 100%;
 }
 
@@ -134,7 +151,6 @@ h1, h4 {
   display: grid;
   visibility: hidden; /* Hidden by default. Visible on click */
   width: 500px; /* Set a default minimum width */
-  margin: auto;
   color: #000;
   background-color: #fff; /* Black background color */
   position: fixed;
@@ -143,7 +159,6 @@ h1, h4 {
   /* bring your own prefixes */
   transform: translate(-50%, -50%);
   border-radius: 2px; /* Rounded borders */
-  padding: 16px; /* Padding */
   z-index: 2;
 }
 
@@ -178,18 +193,11 @@ h1, h4 {
   z-index: 1;
 }
 
-.notification > button {
-  background: none;
-  outline: none;
-  border: none;
-  cursor: pointer;
-  margin-left: 10px;
-  i {
-    font-size: 20px;
-  }
+.padding {
+  padding: 15px;
 }
 
-.notification > div > button {
+.padding > div > button {
   background: none;
   outline: none;
   border: none;
@@ -197,3 +205,8 @@ h1, h4 {
   cursor: pointer;
 }
 
+.round-time-bar {
+  height: 5px;
+  transform-origin: left center;
+  accent-color: red;
+}

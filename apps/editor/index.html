@@ -9,6 +9,12 @@
     <title>Acme</title>
 
     <style>
+      .custom-edge {
+        stroke: red;
+        stroke-width: 2px;
+        fill: none;
+        stroke-dasharray: 5;
+      }
       .node rect {
         stroke: #999;
         fill: #fff;
@@ -73,29 +79,34 @@
         </button>
       </section>
     </ul>
+    <div class="test"></div>
     <main id="editorContainer" class="vertical">
       <div id="editor" class="editor" data-pane="0"></div>
       <div id="secondary" class="editor" data-pane="1"></div>
       <div id="split" class="split-h">
+        <div id="handle" class="handle"></div>
         <div id="output"></div>
         <svg id="smm"></svg>
       </div>
       <div class="notification-bg"/>
       <div id="notification" class="notification">
-        <div>
-          <span id="content">Hey!</span>
-        </div>
-        <div id="options">
-          <input type="radio" id="css" name="fav_language" value="CSS">
-          <label for="css">CSS</label><br>
-        </div>
-        <div>
-          <button id="accept">Submit</button>
-          <button id="close">Close</button>
+        <progress class="round-time-bar"></progress>
+        <div class="padding">
+          <div>
+            <span id="content">Hey!</span>
+          </div>
+          <div id="options">
+            <input type="radio" id="css" name="fav_language" value="CSS">
+            <label for="css">CSS</label><br>
+          </div>
+          <div>
+            <button id="accept">Submit</button>
+            <button id="close">Close</button>
+          </div>
         </div>
       </div>
     </main>
-    <script type="module" src="./src/main.ts"></script>
+    <!-- <script type="module" src="./src/main.ts"></script> -->
     <script type="module" src="./src/smm.js"></script>
 
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>

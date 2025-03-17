@@ -1,5 +1,6 @@
 import { basicSetup } from "codemirror"
 import { EditorView } from "@codemirror/view"
+import { indentUnit, syntaxTree } from "@codemirror/language";
 import { keymap } from "@codemirror/view"
 import { indentWithTab } from "@codemirror/commands"
 import { python } from "@codemirror/lang-python"
@@ -20,7 +21,11 @@ const animalId = generateId(id, {numAdjectives: 1, caseStyle: 'titlecase'})
 localStorage.setItem("id", animalId)
 
 // TODO: update for wss
-const ws = new WebSocket(`wss://prime-lab.cs.vt.edu:8000/ws/${animalId}`);
+// const ws = new WebSocket(`wss://prime-lab.cs.vt.edu:8000/ws/${animalId}`);
+
+const backendServer = '127.0.0.1'
+// prime-lab.cs.vt.edu
+const ws = new WebSocket(`wss://${backendServer}:8000/ws/${animalId}`);
 
 document.querySelector<HTMLSpanElement>("#id")!.innerText += animalId
 
@@ -37,6 +42,7 @@ ws.addEventListener("open", (_) => {
   ws.send(JSON.stringify({event: "updateMaster", payload: payload}))
 })
 
+
 ws.addEventListener("message", (event) => {
   const data = JSON.parse(event.data)
   if (data["event"] === "run") {
@@ -50,6 +56,28 @@ ws.addEventListener("message", (event) => {
     document.querySelector<HTMLSpanElement>("#content")!.innerText = data["payload"]["prompt"]
     const options = document.querySelector<HTMLSpanElement>("#options")!
     options.innerHTML = ""
+
+    let timeleft = 20
+    document.querySelector<HTMLProgressElement>(".round-time-bar").value = timeleft
+    document.querySelector<HTMLProgressElement>(".round-time-bar").max = timeleft
+    const downloadTimer = setInterval(function(){
+      if(timeleft == 0){
+        document.querySelector<HTMLSpanElement>("#notification")!.classList.remove("active")
+        clearInterval(downloadTimer);
+
+        fetch(`https://${backendServer}:8000/reply`, {
+          method: "POST",
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({id: animalId, choice: "-1"})
+        })
+      }
+      document.querySelector<HTMLProgressElement>(".round-time-bar").value = timeleft
+      timeleft -= 1;
+    }, 1000);
+
 
     for (let option of data["payload"]["options"]) {
       const label = document.createElement("label");
@@ -145,13 +173,13 @@ ydoc.on('update', _ => {
 
 let mainView = new EditorView({
   doc: ytext.toString(),
-  extensions: [basicSetup, python(), keymap.of([indentWithTab]), oneDark, yCollab(ytext, provider.awareness, { undoManager })],
+  extensions: [basicSetup, python(), keymap.of([indentWithTab]), oneDark, yCollab(ytext, provider.awareness, { undoManager }), indentUnit.of("    ")],
   parent: document.querySelector<HTMLDivElement>("#editor")!
 })
 
 let secondaryView = new EditorView({
   doc: `# Personal Playground\n# Code will not be shared with others\nfrom study_problem_classes import Menu, Order, Customer, Restaurant\n\nprint('hello playground')`,
-  extensions: [basicSetup, python(), extension(ws), keymap.of([indentWithTab]), oneDark ],
+  extensions: [basicSetup, python(), extension(ws), keymap.of([indentWithTab]), oneDark, indentUnit.of("    ")],
   parent: document.querySelector<HTMLDivElement>("#secondary")!
 })
 
@@ -170,6 +198,7 @@ document.querySelector("#clear")!.addEventListener("click", clearCode);
 document.querySelector("#toggle")!.addEventListener("click", toggleView);
 document.querySelector("#close")!.addEventListener("click", closeNotif)
 document.querySelector("#accept")!.addEventListener("click", acceptNotif)
+document.querySelector("#handle")!.addEventListener("mousedown", handle_resize)
 
 /*
 +------------------+
@@ -207,7 +236,7 @@ async function runCode() {
     channel = animalId
     code = secondaryView.state.doc.toString()
   }
-  await fetch("https://prime-lab.cs.vt.edu:8000/test", {
+  await fetch(`https://${backendServer}:8000/test`, {
     method: "POST",
     headers: {
       'Accept': 'application/json',
@@ -216,12 +245,13 @@ async function runCode() {
     body: JSON.stringify({code: code, channel: channel})
   })
 }
+
 async function testCode() {
-  const collab = document.querySelector('.tab-pane[data-pane="0"].active')
+  const collab = document.querySelector<HTMLSelectElement>('#environment').value
   let channel = ""
   let code: string | YText = ""
 
-  if (collab) {
+  if (collab === "0") {
     channel = "all"
     code = ytext
   }
@@ -229,7 +259,7 @@ async function testCode() {
     channel = animalId
     code = secondaryView.state.doc.toString()
   }
-  await fetch("https://prime-lab.cs.vt.edu:8000/testFunction", {
+  await fetch(`https://${backendServer}:8000/testFunction`, {
     method: "POST",
     headers: {
       'Accept': 'application/json',
@@ -238,6 +268,7 @@ async function testCode() {
     body: JSON.stringify({code: code, channel: channel})
   })
 }
+
 function appendToHistory(output: string, all: boolean) {
   history.push([new Date(), output, all])
 
@@ -273,7 +304,6 @@ function appendToHistory(output: string, all: boolean) {
   }
 
   outputDiv.scrollTop = outputDiv.scrollHeight - outputDiv.clientHeight;
-
 }
 
 function clearCode() {
@@ -283,26 +313,7 @@ function clearCode() {
 }
 
 function toggleView() {
-  const container = document.querySelector<HTMLDivElement>("#editorContainer")!
-  const split = document.querySelector<HTMLDivElement>("#split")!
-  if (container.className === "vertical") {
-    container.className = "horizontal"
-    split.className = "split-h"
-  }
-  else {
-    container.className = "vertical"
-    split.className = "split-v"
-  }
-}
-
-function updateName() {
-  const input = document.querySelector<HTMLInputElement>("#nameInput")!
-  console.log(input.value)
-  provider.awareness.setLocalStateField('user', {
-    name: input.value,
-    color: color.color,
-    colorLight: color.light
-  })
+  jumpToFunction("view_menu")
 }
 
 function closeNotif() {
@@ -312,7 +323,7 @@ function closeNotif() {
 function acceptNotif() {
   const selectedOption = document.querySelector('input[name="option[]"]:checked');
   if (selectedOption) {
-    fetch("https://prime-lab.cs.vt.edu:8000/reply", {
+    fetch(`https://${backendServer}:8000/reply`, {
       method: "POST",
       headers: {
         'Accept': 'application/json',
@@ -328,3 +339,52 @@ function acceptNotif() {
 
   document.querySelector<HTMLSpanElement>("#notification")!.classList.remove("active")
 }
+
+let m_pos: number = 0;
+function resize(e){
+  const dx = e.y - m_pos;
+  m_pos = e.y;
+  const editors: HTMLElement[] = Array.from(document.getElementsByClassName("editor") as HTMLCollectionOf<HTMLElement>);
+  const split = document.getElementById("split")
+  const maxHeight = parseInt(getComputedStyle(split, '').maxHeight);
+  let newHeight = (parseInt(getComputedStyle(split, '').height) - dx)
+
+  if (newHeight < maxHeight) {
+    for (let i in editors) {
+      editors[i].style.height = (parseInt(getComputedStyle(editors[i], '').height) + dx) + "px";
+    }
+    split.style.height = (parseInt(getComputedStyle(split, '').height) - dx) + "px";
+  }
+
+}
+
+function handle_resize(e) {
+  if (e.offsetY < 4) {
+    m_pos = e.x;
+    document.addEventListener("mousemove", resize, false);
+  }
+}
+
+document.addEventListener("mouseup", function(){
+    document.removeEventListener("mousemove", resize, false);
+}, false);
+
+export function jumpToFunction(functionName: string) {
+  const tree = syntaxTree(mainView.state);
+
+  tree.iterate({
+    enter: node => {
+      if (node.name === "FunctionDefinition") {
+        const nameNode = node.node.getChild("VariableName");
+        if (nameNode && mainView.state.doc.sliceString(nameNode.from, nameNode.to) === functionName) {
+          // Move the cursor to the function's start position
+          mainView.dispatch({
+            selection: { anchor: node.from },
+            effects: EditorView.scrollIntoView(node.from, { y: "start" })
+          });
+        }
+      }
+    }
+  });
+}
+

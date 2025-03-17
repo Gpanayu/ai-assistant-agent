@@ -7,16 +7,21 @@ if participants start the project:
 
 ** Help Monitoring Strategy 1: Implicit Observations **
 
-// find a theory to back this up not just from observations
+MTSS based solution + Impasse-Driven problem solving
 
-if a participant is taking more than 5+ minutes on completing a task:
+if a participant is taking more than 3+ minutes on completing a task:
     the system should send a probing message to the user
 
     if the particpant needs help:
         refer to the help tree
 
     if the participant does not need help:
-        the system should reset the monitoring timer for a short amount of time
+        the system should continue monitoring
+
+    !!!
+    Why: According to the literature of Impasse-Driven problem solving a fast
+    impasse yields better results in terms of both insight and solution
+    !!!
 
 if a participant is testing the same function more than 7 times:
     the system should send a probing message to the user
@@ -25,30 +30,31 @@ if a participant is testing the same function more than 7 times:
         refer to the help tree
 
     if the participant does not need help:
-        the system should reset the monitoring timer for a short amount of time
+        the system should continue monitoring
+
+
+    !!!
+    Why: According to the literature of MTSS progression monitoring is key in
+    preventing negative work outcomes
+    !!!
+
+if a participant has a help counter of more than 3:
+    the system should set a timer and signal teammates to check-in with the
+    struggling teammate
 
 
 if the particpant needs help:
 
-    if the participant needs a lot of help completing the task:
+    if the participant needs any amount of help completing the task:
         the system should notify teammates that are waiting
 
         if no teammates are done with their tasks:
             the system should analyze the state of each teammates on the tree if
-            a teammate has completed more tasks and is moving down the tree send
+            a teammate has completed more tasks (if both teammates have the same
+            amount of tasks completed pick one) and is moving down the tree send
             a notification
 
-    if the participant needs a moderate amount of help completing the task:
-        the system should notify teammates that are done with their task to
-        assist the struggling teammate
-
-        if no teammates are done with their tasks:
-            the system should analyze the state of each teammates code and check
-            for less than 20% or more than 75% completion and send a notification
-
-    if the partipcant needs a small amount of help completing the task:
-        the system should send a notification to any teammate as the
-        interruption time should be minimal
+            the system should note down who has been helped
 
     if teammates cannot/refuse to help:
         the system should notify the requester that no available resources
@@ -113,3 +119,5 @@ if the particpant needs help:
             higher on the priority tree
 
 
+if an individual asks explicitly for help:
+  do protocol for help based on monitoring pattern

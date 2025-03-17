@@ -1,6 +1,7 @@
+import {jumpToFunction} from "./main"
 
 var g = new dagreD3.graphlib.Graph()
-.setGraph({ rankdir: "TB", nodesep: 30, ranksep: 50 })
+.setGraph({ rankdir: "TB"})
 .setDefaultEdgeLabel(function () { return {}; });
 
 const nodes = [
@@ -9,30 +10,8 @@ const nodes = [
   "view_order_summary", "add_to_order", "remove_from_order",
   "calculate_order_cost", "get_receipt", "inventory_helper",
   "cook_time_helper", "restock_inventory", "cook_order",
-  "view_inventory", "add_to_queue", "average_cook_time"
+  "add_to_queue", "average_cook_time"
 ];
-
-
-const descriptions = {
-    "Restaurant": "<p>Class for Restraunt</p>",
-    "Customer": "<p>Class for Customer</p>",
-    "view_menu":  "<p>Prints the menu items and their cost</p><i>String Interpolation, Looping</i>",
-    "create_order": "<p>Creates an order with a random 4-digit ID and empty items list</p><i>Random num generation, Object Initiation</i>",
-    "clear_order": "<p>Clears all items in the order and resets cost to zero.</p><i>List Operations</i>",
-    "view_order_summary": "<p>Displays all items in the order with their cost and the total cost</p><i>Looping, String Interpolation</i>",
-    "add_to_order": "<p>Adds an item to the order if it exists in the menu; updates the order cost</p><i>Conditional Statement(If-else), List concepts, String Interpolation</i>",
-    "remove_from_order": "TODO",
-    "calculate_order_cost": "TODO",
-    "get_receipt": "TODO",
-    "inventory_helper": "TODO",
-    "cook_time_helper": "TODO",
-    "restock_inventory": "TODO",
-    "cook_order": "TODO",
-    "view_inventory": "TODO",
-    "add_to_queue": "TODO",
-    "average_cook_time": "TODO",
-}
-
 
 nodes.forEach(function (id) {
   g.setNode(id, { label: id, shape: "rect", class: "unchecked" });
@@ -41,29 +20,43 @@ nodes.forEach(function (id) {
 const links = [
   { source: "Customer", target: "view_menu" },
   { source: "Customer", target: "create_order" },
-  { source: "view_menu", target: "clear_order" },
-  { source: "view_menu", target: "view_order_summary" },
-  { source: "create_order", target: "add_to_order" },
-  { source: "create_order", target: "remove_from_order" },
-  { source: "add_to_order", target: "calculate_order_cost" },
-  { source: "remove_from_order", target: "calculate_order_cost" },
-  { source: "calculate_order_cost", target: "get_receipt" },
   { source: "Restaurant", target: "inventory_helper" },
+  { source: "Restaurant", target: "restock_inventory" },
   { source: "Restaurant", target: "cook_time_helper" },
-  { source: "inventory_helper", target: "restock_inventory" },
+  { source: "create_order", target: "view_order_summary" },
+  { source: "create_order", target: "calculate_order_cost" },
+  { source: "create_order", target: "clear_order" },
+  { source: "create_order", target: "add_to_queue" },
+  { source: "view_order_summary", target: "get_receipt" },
+  { source: "calculate_order_cost", target: "add_to_order" },
+  { source: "calculate_order_cost", target: "remove_from_order" },
   { source: "inventory_helper", target: "cook_order" },
-  { source: "inventory_helper", target: "view_inventory" },
-  { source: "view_inventory", target: "add_to_queue" },
-  { source: "cook_order", target: "add_to_queue" },
-  { source: "average_cook_time", target: "add_to_queue" },
-  { source: "cook_time_helper", target: "average_cook_time" }
+  { source: "inventory_helper", target: "hiddenNode", style: "visibility: hidden" },
+  { source: "hiddenNode", target: "cook_order", style: "visibility: hidden" },
+  { source: "cook_time_helper", target: "cook_order" },
+  { source: "add_to_queue", target: "cook_order" },
+  { source: "cook_time_helper", target: "hiddenNode", style: "visibility: hidden" },
+  { source: "cook_time_helper", target: "average_cook_time" },
 ];
 
+// Add dummy node to force rank alignment
+g.setNode("sameRank", {label:"", rank: 0, width: 0, height: 0, style: "visibility: hidden" });
+
+g.setNode("hiddenNode", {label:"", rank: 0, width: 0, height: 0, style: "visibility: hidden" });
+
+
+// Add edges to enforce same rank
+g.setEdge("sameRank", "Customer", { style: "visibility: hidden" });
+g.setEdge("sameRank", "Restaurant", { style: "visibility: hidden" });
 
 links.forEach(function (link) {
-  g.setEdge(link.source, link.target);
+  g.setEdge(link.source, link.target, {curve: d3.curveBasis, style: link.style});
 });
 
+g.nodes().forEach(function(v) {
+  var node = g.node(v);
+  node.rx = node.ry = 5;
+});
 
 var render = new dagreD3.render();
 
@@ -77,12 +70,23 @@ svg.call(zoom);
 
 render(d3.select("g"), g);
 
+const graphWidth = g.graph().width;
+const graphHeight = g.graph().height;
+const svgWidth = parseInt(svg.style("width").replace("px", ""));
+const svgHeight = parseInt(svg.style("height").replace("px", ""));
 
-var xCenterOffset = (parseInt(svg.style("width")) - g.graph().width) / 2;
-svgGroup.attr("transform", "translate(" + xCenterOffset + ", 20)");
-svg.attr("height", g.graph().height + 40);
+const scale = Math.min(svgWidth / graphWidth, svgHeight / graphHeight) * 0.9;
+
+const translateX = (svgWidth - graphWidth * scale) / 2;
+const translateY = (svgHeight - graphHeight * scale) / 2;
+
+svg.transition().duration(500).call(
+  zoom.transform,
+  d3.zoomIdentity.translate(translateX, translateY).scale(scale)
+);
 
 svgGroup.selectAll(".node").on("click", function (event, nodeId) {
+  jumpToFunction(nodeId)
   ws.send(JSON.stringify({ event: "updateNode", payload: { node: nodeId, id: animalId } }))
 });
 
@@ -92,10 +96,9 @@ svgGroup.selectAll(".node").on("mouseover", async function (event, nodeId) {
             instance.setContent('Loading...');
         },
         onShow(instance) {
-            fetch(`https://prime-lab.cs.vt.edu:8000/lookup/${nodeId}`)
+            fetch(`https://${backendServer}:8000/lookup/${nodeId}`)
                 .then(res => res.json())
                 .then(data => {
-                    console.log(data)
                     instance.setContent(data.html)
                 })
 
@@ -105,8 +108,10 @@ svgGroup.selectAll(".node").on("mouseover", async function (event, nodeId) {
 });
 
 
+const backendServer = '127.0.0.1'
+// prime-lab.cs.vt.edu
 const animalId = localStorage.getItem("id")
-const ws = new WebSocket(`wss://prime-lab.cs.vt.edu:8000/ws/${animalId}`);
+const ws = new WebSocket(`wss://${backendServer}:8000/ws/${animalId}`);
 
 
 ws.addEventListener("message", (event) => {

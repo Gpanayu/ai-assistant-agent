@@ -52,7 +52,7 @@ def view_order_summary(order: Order, menu: Menu):
     """
     Print a summary of the order including each item with its cost and the total cost.
 
-    Note: Use `format(x, ".2f")` to format to the second decimal
+    Note: Use `format(x, '.2f')` or `x:.2f` to format to the second decimal
 
     Expected output format:
         Order Summary:
@@ -65,8 +65,8 @@ def view_order_summary(order: Order, menu: Menu):
     """
     print("Order Summary:")
     for item in order.items:
-        print(f"{item} - ${format(menu.dishes[item], ".2f")}")
-    print(f"Total: ${format(calculate_order_cost(order, menu), ".2f")}")
+        print(f"{item} - ${menu.dishes[item]:.2f}")
+    print(f"Total: ${calculate_order_cost(order, menu):.2f}")
 
 
 def add_to_order(customer: Customer, order_id: int, menu: Menu, item: str):
@@ -179,7 +179,7 @@ def get_receipt(customer: Customer, menu: Menu):
         view_order_summary(v, menu)
         print("-----")
         total += customer.order[k].cost
-    print(f"${format(total, ".2f")}")
+    print(f"${total:.2f}")
 
 
 def add_to_queue(restaurant: Restaurant, customer: Customer):

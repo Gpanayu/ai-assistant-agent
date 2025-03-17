@@ -3,7 +3,12 @@ from typing import List, Dict
 
 class Menu:
     def __init__(self):
-        self.dishes = {"chicken": 12.00, "pork": 10.00, "vegetables": 9.00, "rice": 12.00}
+        self.dishes = {
+            "chicken": 12.00,
+            "pork": 10.00,
+            "vegetables": 9.00,
+            "rice": 12.00,
+        }
 
 
 class Order:

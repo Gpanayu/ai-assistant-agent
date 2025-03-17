@@ -250,23 +250,31 @@ class FunctionReplacer:
                     sys.executable,
                     "-m",
                     "pytest",
+                    "test_study_problem.py",
                     "-k",
                     test_cases,
-                    "--tb=short",
                     "-vv",
-                    "--color=no",
-                    "-rf",
+                    "--color=no"
+                    # "--tb=short",
+                    # "-q",
                 ],
                 capture_output=True,
                 text=True,
             )
 
             if not self.test_full:
-                parts = re.split(r"\n", result.stdout, maxsplit=2)
+                match = re.search(r"=+ (\d+) passed.*(?:, (\d+) failed)?",
+                                  result.stdout)
+                passed = int(match.group(1)) if match else 0
+
+                selected_match = re.search(r"collected (\d+) items / (\d+) deselected / (\d+) selected",
+                                           result.stdout)
+                total_selected = int(selected_match.group(3)) if selected_match else 0
+
                 await graph_manager.update_completed(
                     node_id=self.function_name,
-                    completed=parts[0].count("."),
-                    remaining=len(parts[0].split(" ")[0]),
+                    completed=passed,
+                    remaining=total_selected,
                 )
             print(result.stdout)
             # print(result.stderr)
@@ -445,6 +453,16 @@ async def websocket_text_endpoint(websocket: WebSocket, id: str):
                     }
                     await socketManager.broadcast(json.dumps(event))
 
+                work_statuses = [
+                    {node: graph_manager.graph[node].work_status}
+                    for node in graph_manager.graph
+                ]
+                event = {
+                    "event": "updateGraph",
+                    "payload": {"graph": dict(ChainMap(*work_statuses))},
+                }
+                await socketManager.broadcast(json.dumps(event))
+
             if loaded["event"] == "updatePlayground":
                 editor_manager.update_individual(id, loaded["payload"]["doc"])
                 event = {
@@ -498,6 +516,6 @@ def lookup_description(node):
     return {"html": ""}
 
 
-@app.get("/reply")
+@app.post("/reply")
 def reply_to_notif(body: ReplyBody):
     print(body.id, body.choice)

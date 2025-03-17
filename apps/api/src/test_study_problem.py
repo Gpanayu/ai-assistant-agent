@@ -18,23 +18,22 @@ def customer():
 @pytest.fixture()
 def customer_with_order():
     customer = Customer("bob")
-    customer.order[1234] = Order(1234, ["beef", "stew"], 17.00)
-    customer.order[5678] = Order(5678, ["stew"], 5.00)
+    customer.order[1234] = Order(1234, ["chicken", "rice"], 24.00)
+    customer.order[5678] = Order(5678, ["rice"], 12.00)
     return customer
 
 
 @pytest.fixture()
 def menu():
     menu = Menu()
-    menu.dishes = {"beef": 12.00, "stew": 5.00, "vegetables": 9.00}
     return menu
 
 
 @pytest.fixture()
 def restaurant():
     restaurant = Restaurant()
-    restaurant.cook_time_in_minutes = {"beef": 3, "stew": 2, "vegetables": 1}
-    restaurant.inventory = {"beef": 1, "stew": 1, "vegetables": 1}
+    restaurant.cook_time_in_minutes = {"chicken": 3, "rice": 2, "vegetables": 1}
+    restaurant.inventory = {"chicken": 1, "rice": 1, "vegetables": 1}
     return restaurant
 
 
@@ -43,7 +42,7 @@ def test_view_menu_with_regular_menu(menu, capsys):
     testfile.view_menu(menu)
     captured = capsys.readouterr()
     # Expected: header plus each item on a new line.
-    expected_output = "item | cost\nbeef | 12.0\nstew | 5.0\nvegetables | 9.0\n"
+    expected_output = "item | cost\nchicken | 12.0\npork | 10.0\nvegetables | 9.0\nrice | 12.0\n"
     assert captured.out == expected_output
 
 
@@ -93,18 +92,21 @@ def test_clear_order(customer, menu, capsys):
 
 def test_view_order_summary(menu, capsys):
     """Test view_order_summary is printing"""
-    order = Order("Bobby", ["beef", "stew"], 17)
+    order = Order("Bobby", ["chicken", "vegetables"], 21)
     testfile.view_order_summary(order, menu)
     captured = capsys.readouterr()
     expected_output = (
-            "Order Summary:\nbeef - $12.00\nstew - $5.00\nTotal: $17.00\n"
-    )
+            "Order Summary:\n"
+            "chicken - $12.00\n"
+            "vegetables - $9.00\n"
+            "Total: $21.00\n"
+            )
     assert expected_output == captured.out
 
 
 def test_add_to_order_success(customer, menu):
     order_id = 1234
-    item = "beef"
+    item = "chicken"
     with patch("study_problem_tester.calculate_order_cost", return_value=12.00):
         result = testfile.add_to_order(customer, order_id, menu, item)
 
@@ -116,21 +118,21 @@ def test_add_to_order_success(customer, menu):
 def test_add_to_order_multiple_items(customer, menu):
     order_id = 1234
     with patch("study_problem_tester.calculate_order_cost", return_value=17.00):
-        testfile.add_to_order(customer, order_id, menu, "beef")
-        testfile.add_to_order(customer, order_id, menu, "stew")
+        testfile.add_to_order(customer, order_id, menu, "chicken")
+        testfile.add_to_order(customer, order_id, menu, "rice")
 
-    assert "beef" in customer.order[order_id].items
-    assert "stew" in customer.order[order_id].items
+    assert "chicken" in customer.order[order_id].items
+    assert "rice" in customer.order[order_id].items
 
 
 def test_add_to_order_multiple_same_items(customer, menu):
     """Test adding same item multiple times"""
     order_id = 1234
     with patch("study_problem_tester.calculate_order_cost", return_value=24.00):
-        testfile.add_to_order(customer, order_id, menu, "beef")
-        testfile.add_to_order(customer, order_id, menu, "beef")
+        testfile.add_to_order(customer, order_id, menu, "chicken")
+        testfile.add_to_order(customer, order_id, menu, "chicken")
 
-    assert customer.order[order_id].items.count("beef") == 2
+    assert customer.order[order_id].items.count("chicken") == 2
     assert customer.order[order_id].cost == 24.00
 
 
@@ -159,7 +161,7 @@ def test_add_to_order_no_order_found(customer, menu, capsys):
 
 def test_remove_from_order_success(customer_with_order, menu, capsys):
     order_id = 1234
-    item = "beef"
+    item = "chicken"
 
     result = testfile.remove_from_order(customer_with_order, order_id, menu, item)
 
@@ -169,7 +171,7 @@ def test_remove_from_order_success(customer_with_order, menu, capsys):
         customer_with_order.order[order_id].cost = 5.00
 
     captured = capsys.readouterr()
-    assert "Removed beef\n" == captured.out
+    assert "Removed chicken\n" == captured.out
 
 
 def test_remove_from_order_not_in_order(customer_with_order, menu, capsys):
@@ -197,7 +199,7 @@ def test_remove_from_order_no_order_found(customer, menu, capsys):
 def test_calculate_order_cost(customer_with_order, menu):
     order = customer_with_order.order[1234]
     cost = testfile.calculate_order_cost(order, menu)
-    assert cost == 17.00
+    assert cost == 24.00
 
 
 def test_get_receipt(customer_with_order, menu, capsys):
@@ -208,16 +210,16 @@ def test_get_receipt(customer_with_order, menu, capsys):
         "-----\n"
         "1234\n"
         "Order Summary:\n"
-        "beef - $12.00\n"
-        "stew - $5.00\n"
-        "Total: $17.00\n"
+        "chicken - $12.00\n"
+        "rice - $12.00\n"
+        "Total: $24.00\n"
         "-----\n"
         "5678\n"
         "Order Summary:\n"
-        "stew - $5.00\n"
-        "Total: $5.00\n"
+        "rice - $12.00\n"
+        "Total: $12.00\n"
         "-----\n"
-        "$22.00\n"
+        "$36.00\n"
     )
     assert expected == captured.out
 
@@ -259,9 +261,24 @@ def test_cook_order_no_ingredients(restaurant, customer_with_order):
     assert len(restaurant.order_queue) == 0
 
 
+def test_restock_inventory_success(restaurant, capsys):
+    testfile.restock_inventory(restaurant, "chicken", 2)
+    captured = capsys.readouterr()
+    assert restaurant.inventory["chicken"] == 3
+    expected = "Restocked chicken. New quantity: 3\n"
+    assert expected == captured.out
+
+
+def test_restock_inventory_no_item_found(restaurant, capsys):
+    testfile.restock_inventory(restaurant, "beef", 2)
+    captured = capsys.readouterr()
+    expected = "beef not found in inventory.\n"
+    assert expected == captured.out
+
+
 def test_cook_time_helper_success(restaurant):
-    assert testfile.cook_time_helper(restaurant, "beef") == 3
-    assert testfile.cook_time_helper(restaurant, "stew") == 2
+    assert testfile.cook_time_helper(restaurant, "chicken") == 3
+    assert testfile.cook_time_helper(restaurant, "rice") == 2
     assert testfile.cook_time_helper(restaurant, "vegetables") == 1
 
 
@@ -270,17 +287,17 @@ def test_cook_time_helper_fail(restaurant):
 
 
 def test_inventory_helper_success(restaurant):
-    original_quantity = restaurant.inventory["stew"]
-    result = testfile.inventory_helper(restaurant, "stew")
+    original_quantity = restaurant.inventory["rice"]
+    result = testfile.inventory_helper(restaurant, "rice")
     assert result is True
-    assert restaurant.inventory["stew"] == original_quantity - 1
+    assert restaurant.inventory["rice"] == original_quantity - 1
 
 
 def test_inventory_helper_failure(restaurant):
-    restaurant.inventory["stew"] = 0
-    result = testfile.inventory_helper(restaurant, "stew")
+    restaurant.inventory["rice"] = 0
+    result = testfile.inventory_helper(restaurant, "rice")
     assert result is False
-    assert restaurant.inventory["stew"] == 0
+    assert restaurant.inventory["rice"] == 0
 
 
 def test_average_cook_time_empty_queue(restaurant, capsys):
@@ -293,9 +310,9 @@ def test_average_cook_time_empty_queue(restaurant, capsys):
 def test_average_cook_time_nonempty_queue(restaurant, customer_with_order, capsys):
     testfile.add_to_queue(restaurant, customer_with_order)
     total_time = (
-                restaurant.cook_time_in_minutes["beef"]
-                + 2 * restaurant.cook_time_in_minutes["stew"]
-            )
+        restaurant.cook_time_in_minutes["chicken"]
+        + 2 * restaurant.cook_time_in_minutes["rice"]
+    )
     expected_avg = total_time / 2
     avg_time = testfile.average_cook_time(restaurant)
     captured = capsys.readouterr()

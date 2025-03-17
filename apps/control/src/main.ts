@@ -54,8 +54,11 @@ const cursorTooltipField = StateField.define<readonly Tooltip[]>({
   provide: f => showTooltip.computeN([f], state => state.field(f))
 })
 
+const backendServer = "127.0.0.1"
+// const backendServer = "prime-lab.cs.vt.edu"
 
-const ws = new WebSocket("wss://prime-lab.cs.vt.edu:8000/ws/control");
+// const ws = new WebSocket("wss://prime-lab.cs.vt.edu:8000/ws/control");
+const ws = new WebSocket(`wss://${backendServer}:8000/ws/control`);
 
 let view: EditorView | null = null;
 let lastDoc = ""
@@ -109,7 +112,7 @@ view = new EditorView({
 document.getElementById("fetch")?.addEventListener("click", getState)
 
 async function getState() {
-  const data = await fetch('https://prime-lab.cs.vt.edu:8000/fetch')
+  const data = await fetch(`https://${backendServer}:8000/fetch`)
   const thing = await data.json()
   view?.dispatch({
     changes: { from: 0, to: view.state.doc.length, insert: thing["state"] }
@@ -154,3 +157,36 @@ async function getState() {
     }
   }
 }
+
+document.getElementById("notificationForm")!.addEventListener("submit", function(event) {
+  event.preventDefault();
+
+  // Convert checkboxes into an array
+  const selectedUsers: any[] = [];
+  document.querySelectorAll('input[name="selected_users[]"]:checked').forEach((checkbox) => {
+    selectedUsers.push(checkbox.id);
+  });
+
+  const options: any[] = [];
+  document.querySelectorAll('input[name="option[]"]:checked').forEach((checkbox: any) => {
+    options.push(checkbox.value);
+  });
+
+  const data = {
+    users: selectedUsers,
+    options: options
+  };
+
+  fetch(`https://${backendServer}:8000/notify`, {
+    method: "POST",
+  body: JSON.stringify(data),
+  headers: { "Content-Type": "application/json" }
+  })
+  .then(response => response.json())
+  .then(() => {
+    console.log("success")
+  })
+  .catch(err => {
+    console.log(err)
+  })
+});
