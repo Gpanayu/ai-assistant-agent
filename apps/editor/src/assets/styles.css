@@ -17,7 +17,10 @@
   --active-bg-color: #373c49;
 }
 
-h1, h4 {
+h1,
+h2,
+h3,
+h4 {
   margin: 0;
   padding: 0;
 }
@@ -42,7 +45,9 @@ h1, h4 {
   grid-template-rows: 1fr 1fr;
 }
 
-.editor, .split, #output {
+.editor,
+.split,
+#output {
   overflow-y: auto;
 }
 
@@ -86,7 +91,7 @@ h1, h4 {
   }
 }
 
-#tabs {
+.tabs {
   list-style-type: none;
   padding: 0;
   margin: 0;
@@ -94,6 +99,12 @@ h1, h4 {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
+  width: 50%;
+  padding: 5px 10px;
+}
+
+.tabs-container {
+  display: flex;
 }
 
 .tab {
@@ -125,6 +136,7 @@ h1, h4 {
   width: fit-content;
   outline: none;
   border: none;
+  color: rgba(255, 255, 255, 0.87);
 }
 
 .button-tab:hover {
@@ -138,13 +150,19 @@ h1, h4 {
 }
 
 .outputLine.active {
-  background-color: var(--active-bg-color)
+  background-color: var(--active-bg-color);
 }
 
 .topContainer {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  margin: 0 5px;
+}
+
+.topContainer #id {
+  font-weight: bold;
+  margin-right: 10px;
 }
 
 .notification {
@@ -184,7 +202,7 @@ h1, h4 {
   visibility: hidden;
   width: 100%;
   height: 100%;
-  background-color: rgba(0,0,0,0.3);
+  background-color: rgba(0, 0, 0, 0.3);
   position: fixed;
   top: 50%;
   left: 50%;
@@ -209,4 +227,8 @@ h1, h4 {
   height: 5px;
   transform-origin: left center;
   accent-color: red;
+}
+
+.output-container h3 {
+  margin: 5px 10px;
 }

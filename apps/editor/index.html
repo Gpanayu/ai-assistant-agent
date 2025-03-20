@@ -3,7 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <script src="https://kit.fontawesome.com/3efd7c2f05.js" crossorigin="anonymous"></script>
+    <script
+      src="https://kit.fontawesome.com/3efd7c2f05.js"
+      crossorigin="anonymous"
+    ></script>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dagre-d3/0.6.4/dagre-d3.min.js"></script>
     <title>Acme</title>
@@ -24,7 +27,7 @@
         transition: fill 0.3s ease;
       }
       .node.checked1 rect {
-        fill: #FFFF66;
+        fill: #ffff66;
         stroke: #9ea30d;
       }
       .node.checked2 rect {
@@ -49,26 +52,11 @@
   </head>
   <body>
     <div class="topContainer">
-      <div>
-        <h1>Collaborative Editor</h1>
-      </div>
-    </div>
-    <ul id="tabs">
-      <span id="id">id: </span>
-
+      <span>
+        <h2>Coordination Bot</h2>
+      </span>
       <section class="buttons">
-        <select id="environment">
-          <option value="0">Collab</option>
-          <option value="1">Playground</option>
-        </select>
-        <button class="button-tab" id="run">
-          <i class="fa-solid fa-play"></i>
-          Run
-        </button>
-        <button class="button-tab" id="test">
-          <i class="fa-solid fa-flask"></i>
-          Test
-        </button>
+        <span id="id">id:</span>
         <button class="button-tab" id="clear">
           <i class="fa-solid fa-broom"></i>
           Clear Output
@@ -78,17 +66,52 @@
           Flag For Help
         </button>
       </section>
-    </ul>
+    </div>
+    <div class="tabs-container">
+      <ul class="tabs">
+        <h3>Collaborative Editor</h3>
+        <section class="buttons">
+          <button class="button-tab" id="run-collab">
+            <i class="fa-solid fa-play"></i>
+            Run
+          </button>
+          <button class="button-tab" id="test-collab">
+            <i class="fa-solid fa-flask"></i>
+            Test
+          </button>
+        </section>
+      </ul>
+      <ul class="tabs">
+        <h3>Personal Playground</h3>
+        <section class="buttons">
+          <button class="button-tab" id="run-playground">
+            <i class="fa-solid fa-play"></i>
+            Run
+          </button>
+          <button class="button-tab" id="test-playground">
+            <i class="fa-solid fa-flask"></i>
+            Test
+          </button>
+        </section>
+      </ul>
+    </div>
     <div class="test"></div>
-    <main id="editorContainer" class="vertical">
+    <main id="editorContainer">
       <div id="editor" class="editor" data-pane="0"></div>
       <div id="secondary" class="editor" data-pane="1"></div>
       <div id="split" class="split-h">
         <div id="handle" class="handle"></div>
-        <div id="output"></div>
-        <svg id="smm"></svg>
+
+        <div class="output-container">
+          <h3>Console Output</h3>
+          <div id="output"></div>
+        </div>
+        <div class="output-container">
+          <h3>Task Progress</h3>
+          <svg id="smm"></svg>
+        </div>
       </div>
-      <div class="notification-bg"/>
+      <div class="notification-bg" />
       <div id="notification" class="notification">
         <progress class="round-time-bar"></progress>
         <div class="padding">
@@ -96,8 +119,8 @@
             <span id="content">Hey!</span>
           </div>
           <div id="options">
-            <input type="radio" id="css" name="fav_language" value="CSS">
-            <label for="css">CSS</label><br>
+            <input type="radio" id="css" name="fav_language" value="CSS" />
+            <label for="css">CSS</label><br />
           </div>
           <div>
             <button id="accept">Submit</button>
