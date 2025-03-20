@@ -330,7 +330,9 @@ function appendToHistory(output: string, all: boolean) {
     const authored = document.createElement('span');
     authored.className = 'outputLine';
     authored.innerHTML = `<p></p>${
-      command[2] ? '' : '<i>ran from playground</i>'
+      command[2]
+        ? '<i>Ran from Collaborative Editor</i>'
+        : '<i>Ran from Personal Playground</i>'
     }`;
     authored.style.color = 'yellow';
 
