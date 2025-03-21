@@ -17,6 +17,7 @@ from textwrap import dedent
 import csv
 from collections import ChainMap
 import json
+from datetime import datetime, timedelta
 
 load_dotenv()
 
@@ -124,15 +125,18 @@ class GraphNode:
         self.total = 0
         self.desc = desc
         self.concepts = concepts
+        self.start_time = None
 
     def update_status(self, id: str):
         if self.work_status != 2:
             if self.claimed_by == "" and self.work_status == 0:
                 self.claimed_by = id
                 self.work_status = 1
+                self.start_time = datetime.now()
             elif self.claimed_by != "" and self.work_status == 1:
                 self.claimed_by = ""
                 self.work_status = 0
+                self.start_time = None
 
     def update_completed(self, completed: int, remaining: int):
         if self.claimed_by != "":
@@ -142,7 +146,8 @@ class GraphNode:
                 self.work_status = 1
             self.total = remaining
             self.completed = completed
-
+def get_time_diff(start_time: datetime) -> int:
+    return int((datetime.now() - start_time).total_seconds())
 
 class GraphManager:
     def __init__(self):
@@ -236,7 +241,7 @@ class FunctionReplacer:
         with open(self.main_file, "w") as f:
             f.write(new_code)
 
-    async def run_tests(self):
+    async def run_tests(self,user):
         try:
             print("Running test cases...")
             test_cases = ""
@@ -276,6 +281,13 @@ class FunctionReplacer:
                     completed=passed,
                     remaining=total_selected,
                 )
+                
+                #run notification for checking next task
+            passed = int(match.group(1)) if match else 0
+            total_selected = int(selected_match.group(3)) if selected_match else 0
+            if passed == total_selected and user!="all":
+                function_tests_complete(self.function_name,user)
+                print("function running")
             print(result.stdout)
             # print(result.stderr)
         except Exception as e:
@@ -296,6 +308,11 @@ graph_manager = GraphManager()
 
 editor_manager = EditorManager()
 
+
+def function_tests_complete(function_name,user): 
+    notification = NotifyBody(users=[user], options=["2"])
+    push_notification(notification)
+    print("sent notification")
 
 @app.websocket("/listen")
 async def websocket_listen_endpoint(websocket: WebSocket):
@@ -361,6 +378,7 @@ async def push_notification(notification: NotifyBody):
     return {"ok": 200}
 
 
+
 @app.post("/testFunction")
 async def testFunction(rawCode: InputBody):
     buffer = io.StringIO()
@@ -369,13 +387,13 @@ async def testFunction(rawCode: InputBody):
     if rawCode.channel == "all":
         replacer = FunctionReplacer("study_problem_tester.py", "study_problem_sol.py")
         replacer.replace_whole_file(rawCode.code)
-        await replacer.run_tests()
+        await replacer.run_tests(rawCode.channel)
         replacer.restore_main_file
 
     else:
         replacer = FunctionReplacer("study_problem_tester.py", "study_problem_sol.py")
         replacer.replace_function_in_file(rawCode.code)
-        await replacer.run_tests()
+        await replacer.run_tests(rawCode.channel)
         replacer.restore_main_file()
 
     sys.stdout = sys.__stdout__
@@ -518,4 +536,5 @@ def lookup_description(node):
 
 @app.post("/reply")
 def reply_to_notif(body: ReplyBody):
+    # user_response(body.id, body.choice)
     print(body.id, body.choice)

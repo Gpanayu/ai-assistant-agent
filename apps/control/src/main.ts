@@ -1,11 +1,17 @@
 import { basicSetup } from "codemirror"
 import { EditorView } from "@codemirror/view"
 import { python } from "@codemirror/lang-python"
-
+import https from "https"
 import {Tooltip, showTooltip} from "@codemirror/view"
 import {StateField} from "@codemirror/state"
 import {EditorState} from "@codemirror/state"
+import { send } from "process"
 
+interface UserState {
+  state: string
+  timestamp: number
+}
+const userStates: Record<string, UserState> = {};
 const cursorTooltipBaseTheme = EditorView.baseTheme({
   ".cm-tooltip.cm-tooltip-cursor": {
     backgroundColor: "#66b",
@@ -21,6 +27,111 @@ const cursorTooltipBaseTheme = EditorView.baseTheme({
     }
   }
 })
+
+function checkUserInactivity() {
+  const now = Date.now()/1000;
+  const inactiveUsers:string[] = [];
+  for (const [user, state] of Object.entries(userStates)) {
+    if (now - state.timestamp > 60) {
+      inactiveUsers.push(user);
+    }
+
+  }
+  if( inactiveUsers.length > 0) {
+    sendNotification(inactiveUsers,["5"]);
+    for (const user of inactiveUsers) {
+      delete userStates[user];
+    }
+
+  }
+  return inactiveUsers;
+
+
+}
+
+async function sendNotification(users: string[], options: string[]) {
+  const url="https://0.0.0.0:8000/notify";
+  const payload = {
+    users: users,
+    options: options
+  };
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      agent:new https.Agent({rejectUnauthorized:false})
+    });
+
+    if (response.ok) {
+      return await response.json();
+    } else {
+      return {
+        error: `Request failed with status code ${response.status}`,
+        details: await response.text(),
+      };
+    }
+  } catch (error) {
+    return { error: String(error) };
+    
+  }
+}
+setInterval(checkUserInactivity, 20000); 
+async function selectTeammate(
+  mapData: Record<string, string>,
+  userWhoRequestedHelp: string
+) {
+  const blaringCode = mapData[userWhoRequestedHelp] || "";
+  let prompt = `You are a teacher and User ${userWhoRequestedHelp} is stuck on the following code: ${blaringCode}. Please select a teammate to help. Check whoever is closer to their individual solution. Give response in JSON format of {type of mistake, who can help} JSON format only.\n`;
+
+  for (const [user, state] of Object.entries(mapData)) {
+    prompt += `\nUser ${user} current code is: ${state}\n`;
+
+    try {
+      if (state.includes("def")) {
+        const functionName = state.match(/def (\w+)\(/)?.[1];
+        if (functionName) {
+          prompt += `Solution for ${functionName} is: Placeholder docstring\n`;
+        }
+      }
+    } catch (error) {
+      prompt += `Error parsing code: ${error}\n`;
+    }
+  }
+
+  const response = await curlOllama(prompt);
+  console.log(response.response);
+  return response;
+}
+
+
+async function curlOllama( string = "Hi"): Promise<any> {
+  const apiUrl = "http://prime-lab.cs.vt.edu:11434/api/generate";
+  const payload = {
+    model: "gemma3:27b",
+    prompt: prompt,
+    stream: false,
+  };
+
+  try {
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (response.ok) {
+      return await response.json();
+    } else {
+      return {
+        error: `Request failed with status code ${response.status}`,
+        details: await response.text(),
+      };
+    }
+  } catch (error) {
+    return { error: String(error) };
+  }
+}
 
 function getCursorTooltips(state: EditorState): readonly Tooltip[] {
   return state.selection.ranges
@@ -54,7 +165,7 @@ const cursorTooltipField = StateField.define<readonly Tooltip[]>({
   provide: f => showTooltip.computeN([f], state => state.field(f))
 })
 
-const backendServer = "127.0.0.1"
+const backendServer = "0.0.0.0"
 // const backendServer = "prime-lab.cs.vt.edu"
 
 // const ws = new WebSocket("wss://prime-lab.cs.vt.edu:8000/ws/control");
@@ -79,6 +190,10 @@ ws.addEventListener("message", (event) => {
   if (data["event"] === "monitorPlayground") {
     const map = data["payload"]["editors"]
     const individualsDiv = document.getElementById("individuals");
+    for(const [user, state] of Object.entries(map)) {
+      userStates[user] = {state: state, timestamp: Date.now()/1000};
+    }
+    checkUserInactivity();
     if (individualsDiv) {
       individualsDiv.innerHTML = "";
       for (let key of Object.keys(map)) {
