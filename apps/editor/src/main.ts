@@ -50,6 +50,15 @@ ws.addEventListener('message', (event) => {
   if (data['event'] === 'initial') {
     ytext.insert(0, data['payload']['doc']);
   }
+  if(data['event']=='countdown'){
+    const minutes=data['payload']['minutes']
+    const seconds=data['payload']['seconds']
+    minutesElement.innerText = minutes.toString();
+    secondsElement.innerText = seconds.toString().padStart(2, '0');
+  }
+  if (data['event'] === 'countdownFinished') {
+    alert("The countdown has finished!");
+  }
   if (data['event'] === 'notification') {
     document
       .querySelector<HTMLSpanElement>('#notification')!
@@ -99,6 +108,12 @@ ws.addEventListener('message', (event) => {
     }
   }
 });
+
+
+const minutesElement = document.getElementById('minutes') as HTMLSpanElement;
+const secondsElement = document.getElementById('seconds') as HTMLSpanElement;
+
+
 
 export function updateGraph(nodeId: string) {
   ws.send(JSON.stringify({ event: 'graphUpdated', payload: { node: nodeId } }));
