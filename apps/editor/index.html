@@ -7,7 +7,7 @@
       src="https://kit.fontawesome.com/3efd7c2f05.js"
       crossorigin="anonymous"
     ></script>
-    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dagre-d3/0.6.4/dagre-d3.min.js"></script>
     <title>Acme</title>
 
@@ -113,22 +113,29 @@
       </div>
       <div class="notification-bg" />
       <div id="notification" class="notification">
-        <progress class="round-time-bar"></progress>
         <div class="padding">
-          <div>
-            <span id="content">Hey!</span>
-          </div>
+          <h1 id="content">Hey!</h1>
+          <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
+          eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad
+          minim veniam, quis nostrud exercitation ullamco laboris nisi ut
+          aliquip ex ea commodo consequat. </p>
           <div id="options">
-            <input type="radio" id="css" name="fav_language" value="CSS" />
-            <label for="css">CSS</label><br />
+            <div>
+              <h3>How much time you willing to spend?</h2>
+              <input type="range"/>
+            </div>
+            <h3>?</h2>
           </div>
+          <div id="my_dataviz"></div>
           <div>
             <button id="accept">Submit</button>
-            <button id="close">Close</button>
           </div>
         </div>
       </div>
     </main>
+    <script>
+
+    </script>
     <!-- <script type="module" src="./src/main.ts"></script> -->
     <script type="module" src="./src/smm.js"></script>
 

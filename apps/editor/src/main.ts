@@ -222,7 +222,6 @@ document
   .addEventListener('click', testCodePlayground);
 document.querySelector('#clear')!.addEventListener('click', clearCode);
 document.querySelector('#toggle')!.addEventListener('click', toggleView);
-document.querySelector('#close')!.addEventListener('click', closeNotif);
 document.querySelector('#accept')!.addEventListener('click', acceptNotif);
 document.querySelector('#handle')!.addEventListener('mousedown', handle_resize);
 
@@ -234,22 +233,6 @@ document.querySelector('#handle')!.addEventListener('mousedown', handle_resize);
 +------------------+
 */
 let history: [Date, string, boolean][] = [];
-
-let tabs = document.querySelectorAll('.tab');
-
-for (let i = 0; i < tabs.length; i++) {
-  let self = tabs[i];
-  console.log('check');
-  self.addEventListener('click', function () {
-    let data = this.getAttribute('data-tab');
-    document.querySelectorAll('.tab-pane.active')[0].classList.remove('active');
-    document
-      .querySelectorAll('.tab-pane[data-pane="' + data + '"]')[0]
-      .classList.add('active');
-    document.querySelectorAll('.tab.active')[0].classList.remove('active');
-    this.classList.add('active');
-  });
-}
 
 async function runCodeCollab() {
   const channel = 'all';
@@ -283,7 +266,7 @@ async function testCodeCollab() {
   const code = ytext;
   const channel = 'all';
 
-  await fetch(`https://${backendServer}:8000/test`, {
+  await fetch(`https://${backendServer}:8000/testFunction`, {
     method: 'POST',
     headers: {
       Accept: 'application/json',
@@ -297,7 +280,7 @@ async function testCodePlayground() {
   const code = secondaryView.state.doc.toString();
   const channel = animalId;
 
-  await fetch(`https://${backendServer}:8000/test`, {
+  await fetch(`https://${backendServer}:8000/testFunction`, {
     method: 'POST',
     headers: {
       Accept: 'application/json',
@@ -315,6 +298,7 @@ function appendToHistory(output: string, all: boolean) {
 
   for (let i = 0; i < history.length; i++) {
     let command = history[i];
+    console.log(command)
 
     const HOURS = command[0].getHours().toString().padStart(2, '0');
     const MINUTES = command[0].getMinutes().toString().padStart(2, '0');
@@ -331,7 +315,7 @@ function appendToHistory(output: string, all: boolean) {
     authored.className = 'outputLine';
     authored.innerHTML = `<p></p>${
       command[2]
-        ? '<i>Ran from Collaborative Editor</i>'
+        ? '<i>Ran by Collaborative Editor</i>'
         : '<i>Ran from Personal Playground</i>'
     }`;
     authored.style.color = 'yellow';
@@ -355,7 +339,14 @@ function clearCode() {
 }
 
 function toggleView() {
-  jumpToFunction('view_menu');
+    fetch(`https://${backendServer}:8000/reply`, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ id: animalId, choice: "Help", text: "" }),
+    });
 }
 
 function closeNotif() {
@@ -435,9 +426,11 @@ export function jumpToFunction(functionName: string) {
           mainView.state.doc.sliceString(nameNode.from, nameNode.to) ===
             functionName
         ) {
+
+          let from = node.node.from;
+          let to = node.node.to;
           // Move the cursor to the function's start position
           mainView.dispatch({
-            selection: { anchor: node.from },
             effects: EditorView.scrollIntoView(node.from, { y: 'start' }),
           });
         }

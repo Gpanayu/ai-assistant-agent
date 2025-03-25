@@ -50,7 +50,7 @@ function checkUserInactivity() {
 }
 
 async function sendNotification(users: string[], options: string[]) {
-  const url="https://0.0.0.0:8000/notify";
+  const url=`https://${backendServer}:8000/notify`;
   const payload = {
     users: users,
     options: options
@@ -73,10 +73,12 @@ async function sendNotification(users: string[], options: string[]) {
     }
   } catch (error) {
     return { error: String(error) };
-    
+
   }
 }
-setInterval(checkUserInactivity, 20000); 
+
+setInterval(checkUserInactivity, 20000);
+
 async function selectTeammate(
   mapData: Record<string, string>,
   userWhoRequestedHelp: string
@@ -165,7 +167,7 @@ const cursorTooltipField = StateField.define<readonly Tooltip[]>({
   provide: f => showTooltip.computeN([f], state => state.field(f))
 })
 
-const backendServer = "0.0.0.0"
+const backendServer = "127.0.0.1"
 // const backendServer = "prime-lab.cs.vt.edu"
 
 // const ws = new WebSocket("wss://prime-lab.cs.vt.edu:8000/ws/control");

@@ -45,6 +45,10 @@ h4 {
   grid-template-rows: 1fr 1fr;
 }
 
+#output {
+  height: 50vh;
+}
+
 .editor,
 .split,
 #output {
@@ -165,19 +169,35 @@ h4 {
   margin-right: 10px;
 }
 
+#my_dataviz {
+  height: 400px;
+}
+
 .notification {
-  display: grid;
-  visibility: hidden; /* Hidden by default. Visible on click */
-  width: 500px; /* Set a default minimum width */
+  visibility: visible; /* Hidden by default. Visible on click */
+  width: 1000px; /* Set a default minimum width */
   color: #000;
   background-color: #fff; /* Black background color */
   position: fixed;
-  top: 25%;
+  top: 50%;
   left: 50%;
   /* bring your own prefixes */
   transform: translate(-50%, -50%);
-  border-radius: 2px; /* Rounded borders */
+  border-radius: 5px; /* Rounded borders */
   z-index: 2;
+  box-shadow: rgba(0, 0, 0, 0.15) 1.95px 1.95px 2.6px;
+
+  button {
+    padding: 10px;
+    background-color: #4287f5;
+    outline: none;
+    border: none;
+    border-radius: 5px;
+  }
+
+  button:hover {
+    background-color: #619cfa;
+  }
 }
 
 .notification.active {
@@ -215,13 +235,6 @@ h4 {
   padding: 15px;
 }
 
-.padding > div > button {
-  background: none;
-  outline: none;
-  border: none;
-  color: blue;
-  cursor: pointer;
-}
 
 .round-time-bar {
   height: 5px;

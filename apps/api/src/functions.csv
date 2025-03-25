@@ -9,7 +9,6 @@ calculate_order_cost,"Looping, Dictionary concepts",Calculates and returns the t
 get_receipt,"String Interpolation, Looping","Prints the receipt, showing customer name, items ordered, and total cost.",,
 add_to_queue,List Operations,Adds an order to the restaurant's order queue.,,
 cook_order,"List Operations, Tuple, Looping, Function calling","Cooks an order from the queue, updates inventory, and returns order ID and cooking time.",,
-view_inventory,"Looping, String Interpolation",Displays the current inventory of the restaurant.,,
 restock_inventory,"Conditional Statement(if-else), String Interpolation, Dictionary concepts",Restocks an item in inventory if it exists; else prints a not-found message.,,
 cook_time_helper,Dictionary Operations,Returns the cooking time of a given menu item.,,
 inventory_helper,"Conditional Statements, Dictionary Operations",Checks if the item is available in inventory and decrements the quantity.,,

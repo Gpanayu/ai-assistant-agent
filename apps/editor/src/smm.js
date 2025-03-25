@@ -63,8 +63,8 @@ var render = new dagreD3.render();
 var svg = d3.select("svg"),
   svgGroup = svg.append("g");
 
-var zoom = d3.zoom().on("zoom", function (event) {
-  svgGroup.attr("transform", event.transform);
+var zoom = d3.zoom().on("zoom", function (e) {
+  svgGroup.attr("transform", e.transform);
 });
 svg.call(zoom);
 
@@ -107,6 +107,82 @@ svgGroup.selectAll(".node").on("mouseover", async function (event, nodeId) {
     });
 });
 
+
+// set the dimensions and margins of the graph
+var margin = {top: 30, right: 30, bottom: 70, left: 60},
+    width = 460 - margin.left - margin.right,
+    height = 400 - margin.top - margin.bottom;
+
+// append the svg object to the body of the page
+var svg = d3.select("#my_dataviz")
+    .append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+    .append("g")
+    .attr("transform",
+        "translate(" + margin.left + "," + margin.top + ")");
+
+// Initialize the X axis
+var x = d3.scaleBand()
+    .range([0, width - margin.right ])
+    .padding(0.2);
+var xAxis = svg.append("g")
+    .attr("transform", "translate(0," + height + ")")
+
+// Initialize the Y axis
+var y = d3.scaleLinear()
+    .range([ height, 0]);
+var yAxis = svg.append("g")
+    .attr("class", "myYaxis")
+
+
+// A function that create / update the plot for a given variable:
+async function update(data) {
+
+    // X axis
+    x.domain(d3.groupSort(data, ([d]) => -d.frequency, (d) => d.letter))
+    xAxis.transition().duration(1000).call(d3.axisBottom(x))
+
+    // Add Y axis
+    y.domain([0, 27 ]);
+    yAxis.transition().duration(1000).call(d3.axisLeft(y));
+    // // Bars
+    // svg.selectAll("mybar")
+    //     .data(data)
+    //     .join("rect")
+    //     .attr("x", d => x(d.letter))
+    //     .attr("width", x.bandwidth())
+    //     .attr("fill", "#69b3a2")
+    // // no bar at the beginning thus:
+    //     .attr("height", d => height - y(0)) // always equal to 0
+    //     .attr("y", d => y(0))
+
+
+    // variable u: map data to existing bars
+    var u = svg.selectAll("rect")
+        .data(data)
+
+
+    // update bars
+    u
+        .enter()
+        .append("rect")
+        .attr("x", function(d) { return x(d.letter); })
+        .attr("width", x.bandwidth())
+        .merge(u)
+        .transition()
+        .duration(1000)
+            .attr("height", d => y(0) - y(d.frequency))
+            .attr("y", function(d) { return y(d.frequency); })
+        .attr("fill", "#69b3a2")
+}
+
+// Initialize plot
+update([
+        {letter: "Team Progress", frequency: 10},
+        {letter: "Your Progress", frequency: 0.03},
+        {letter: "Helped Progress", frequency: 0.03}
+    ])
 
 const backendServer = '127.0.0.1'
 // prime-lab.cs.vt.edu

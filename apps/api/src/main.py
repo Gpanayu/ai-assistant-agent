@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from fastapi import Response
-from typing import Dict, Callable, List
+from typing import Dict, Callable, List, Optional
 from deepgram import DeepgramClient
 from dotenv import load_dotenv
 import os
@@ -17,7 +17,10 @@ from textwrap import dedent
 import csv
 from collections import ChainMap
 import json
+import requests
+import study_problem_sol
 from datetime import datetime, timedelta
+from fastapi_utilities import repeat_every
 
 load_dotenv()
 
@@ -45,6 +48,7 @@ class NotifyBody(BaseModel):
 class ReplyBody(BaseModel):
     id: str
     choice: str
+    text: Optional[str]
 
 
 class SocketManager:
@@ -133,21 +137,29 @@ class GraphNode:
                 self.claimed_by = id
                 self.work_status = 1
                 self.start_time = datetime.now()
-            elif self.claimed_by != "" and self.work_status == 1:
+            elif self.claimed_by == id and self.work_status == 1:
                 self.claimed_by = ""
                 self.work_status = 0
                 self.start_time = None
 
-    def update_completed(self, completed: int, remaining: int):
+    async def update_completed(self, completed: int, remaining: int):
         if self.claimed_by != "":
             if completed == remaining:
                 self.work_status = 2
+                event = {
+                    "event": "notification",
+                    "payload": {"prompt": "", "options": []},
+                }
+                await socketManager.direct_message(id=self.claimed_by, msg=json.dumps(event))
             else:
                 self.work_status = 1
             self.total = remaining
             self.completed = completed
+
+
 def get_time_diff(start_time: datetime) -> int:
     return int((datetime.now() - start_time).total_seconds())
+
 
 class GraphManager:
     def __init__(self):
@@ -166,7 +178,7 @@ class GraphManager:
         self.graph[node_id].update_status(id)
 
     async def update_completed(self, node_id: str, completed: int, remaining: int):
-        self.graph[node_id].update_completed(completed, remaining)
+        await self.graph[node_id].update_completed(completed, remaining)
         work_statuses = [
             {node: graph_manager.graph[node].work_status}
             for node in graph_manager.graph
@@ -189,6 +201,110 @@ class EditorManager:
 
     def update_individual(self, id, state):
         self.individual[id] = state
+
+    def get_ollama_response(self, prompt=""):
+        api_url = "http://prime-lab.cs.vt.edu:11434/api/generate"
+        print(prompt)
+        try:
+            headers = {
+                    "Content-Type": "application/json"
+            }
+            payload = {
+                    "model": "gemma3:27b",
+                    "prompt": prompt,
+                    "stream": False,
+            }
+            response = requests.post(url=api_url, data=json.dumps(payload), headers=headers)
+            if response.status_code == 200:
+                return response.json()
+            else:
+                return {"error": f"Request failed with status code {response.status_code}", "details": response.text}
+        except requests.exceptions.RequestException as e:
+            return {"error": str(e)}
+
+    def generate_options_for_helping(self, id: str, task: str, time: int) -> str:
+        """
+        Generates help options for the user to choose from
+        """
+        prompt = (f"Pretend you are a teacher. User {id} has completed {task} in {time} seconds \n")
+
+        conversion = {
+                0: "not-started",
+                1: "started",
+                2: "complete"
+                }
+
+        work_statuses = [
+            {node: conversion[graph_manager.graph[node].work_status]}
+            for node in graph_manager.graph
+        ]
+
+        current_state = dict(ChainMap(*work_statuses))
+        thing = "\n ".join([f"{key} is {value}" for key, value in current_state.items()])
+        prompt += f"Here is the current state of the project: {thing}\n"
+        prompt += (
+            """The tasks are linked like this:
+            (Customer, view_menu)
+            (Customer, create_order)
+            (Restaurant, inventory_helper)
+            (Restaurant, restock_inventory)
+            (Restaurant, cook_time_helper)
+            (create_order, view_order_summary)
+            (create_order, calculate_order_cost)
+            (create_order, clear_order)
+            (create_order, add_to_queue)
+            (view_order_summary, get_receipt)
+            (calculate_order_cost, add_to_order)
+            (calculate_order_cost, remove_from_order)
+            (inventory_helper, cook_order)
+            (cook_time_helper, cook_order)
+            (add_to_queue, cook_order)
+            (cook_time_helper, average_cook_time)
+            \n"""
+
+                )
+
+        prompt += (f"Based on the state of the project "
+                   f"Suggest 3 options for {id}. 1 option should consider "
+                   "their teammate's code and give context to how close they are"
+                   "to completing, "
+                   f"another option should be a direct dependency of {task}, the final "
+                   f"option should not be a dependency of {task}."
+                   "Give 1 sentence of context and an approximate time in seconds "
+                   "estimate for each suggestion\n"
+                   "Return as an array {{suggestion, time}}. "
+                   "Only return this array")
+
+        response = self.get_ollama_response(prompt=prompt)
+        cleaned = re.sub(r'```json\n|```', '', response.get("response")).strip()
+        data = json.loads(cleaned)
+        return data
+
+    def completeness_check(self, id):
+        prompt = ""
+        for editor_id, state in self.individual.items():
+            if editor_id == id:
+                continue
+            prompt += f"User {editor_id} has code: \n {state}\n"
+            try:
+                parsed_code = ast.parse(dedent(state))
+                for node in parsed_code.body:
+                    if isinstance(node, ast.FunctionDef):
+                        function_name = node.name
+                        if hasattr(study_problem_sol, function_name):
+                            solution_function = getattr(study_problem_sol, function_name)
+                            prompt += f"The doc string for the function {function_name} is: {solution_function.__doc__}\n"
+            except Exception as e:
+                prompt += f"Error parsing code: {e}\n"
+
+        prompt += ("How close is each user to finishing their task?\n"
+                   "Return as an array {{name, completeness, explanation}}. "
+                   "Only return this array")
+
+        response = self.get_ollama_response(prompt=prompt)
+        # cleaned = re.sub(r'```json\n|```', '', response.get("response")).strip()
+        # data = json.loads(cleaned)
+        return response.get("response")
 
 
 class FunctionReplacer:
@@ -281,13 +397,7 @@ class FunctionReplacer:
                     completed=passed,
                     remaining=total_selected,
                 )
-                
-                #run notification for checking next task
-            passed = int(match.group(1)) if match else 0
-            total_selected = int(selected_match.group(3)) if selected_match else 0
-            if passed == total_selected and user!="all":
-                function_tests_complete(self.function_name,user)
-                print("function running")
+
             print(result.stdout)
             # print(result.stderr)
         except Exception as e:
@@ -308,11 +418,11 @@ graph_manager = GraphManager()
 
 editor_manager = EditorManager()
 
+msgs = []
+state = ""
+cursor_positions = {}
+help_queue = []
 
-def function_tests_complete(function_name,user): 
-    notification = NotifyBody(users=[user], options=["2"])
-    push_notification(notification)
-    print("sent notification")
 
 @app.websocket("/listen")
 async def websocket_listen_endpoint(websocket: WebSocket):
@@ -378,7 +488,6 @@ async def push_notification(notification: NotifyBody):
     return {"ok": 200}
 
 
-
 @app.post("/testFunction")
 async def testFunction(rawCode: InputBody):
     buffer = io.StringIO()
@@ -440,11 +549,6 @@ async def test(rawCode: InputBody):
         await socketManager.direct_message(json.dumps(event), rawCode.channel)
 
     return Response(content=buffer.getvalue(), media_type="text/plain")
-
-
-msgs = []
-state = ""
-cursor_positions = {}
 
 
 @app.websocket("/ws/{id}")
@@ -538,3 +642,49 @@ def lookup_description(node):
 def reply_to_notif(body: ReplyBody):
     # user_response(body.id, body.choice)
     print(body.id, body.choice)
+    if body.choice == "":
+        pass
+
+    for user, state in editor_manager.individual.items():
+        prompt = f"\nUser {user} current code is: {state}\n"
+
+        try:
+            parsed_code = ast.parse(dedent(state))
+            for node in parsed_code.body:
+                if isinstance(node, ast.FunctionDef):
+                    function_name = node.name
+                    if hasattr(study_problem_sol, function_name):
+                        solution_function = getattr(study_problem_sol, function_name)
+                        prompt += f"Solution for {function_name} is: {solution_function.__doc__}\n"
+        except Exception as e:
+            prompt += f"Error parsing code: {e}\n"
+
+
+# @app.on_event("startup")
+# @repeat_every(seconds=30)
+# async def monitor_progress():
+#     print(editor_manager.individual)
+#
+#     prompt = f"""You are a teacher and User {userWhoRequestedHelp} is stuck on the
+#     following code: {blaring_code}. Please select a teammate to help. Check
+#     whoever is closer to their individual solution. Give\n"""
+#
+#     editor_manager.get_ollama_response()
+#
+#     print("hi")
+
+
+class Chat(BaseModel):
+    chat: str
+    time: int
+    task: str
+
+
+@app.post("/ollama")
+async def ollama(flex: Chat):
+    # response = editor_manager.generate_options_for_helping(
+    #     flex.chat, flex.task, flex.time
+    # )
+    response = editor_manager.completeness_check(flex.chat)
+    # response = editor_manager.get_ollama_response()
+    return response
