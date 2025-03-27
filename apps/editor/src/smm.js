@@ -1,5 +1,56 @@
 import {jumpToFunction} from "./main"
 
+const backendServer = '127.0.0.1'
+// prime-lab.cs.vt.edu
+const animalId = localStorage.getItem("id")
+const ws = new WebSocket(`wss://${backendServer}:8000/ws/${animalId}`);
+
+ws.addEventListener("message", (event) => {
+  const data = JSON.parse(event.data)
+  if (data['event'] === 'notification') {
+    console.log('honk')
+    const notification = document.querySelector(".notification")
+    const title = document.querySelector("#title")
+    const context = document.querySelector("#context")
+    context.textContent = data["payload"]["context"]
+
+    for (let option of data["payload"]["options"]) {
+      console.log(option)
+    }
+
+    const nice = ["Nice work! You got it done", "Great job! You wrapped it up", "Awesome! You finished your task", "Hey! You nailed it"]
+    title.textContent = nice[Math.floor(Math.random() * (nice.length - 1))]
+    notification.classList += " active"
+    if (!data['payload']['help']) {
+      const helper = document.querySelector("#for-helper")
+      helper.style.display = "none"
+    }
+  }
+  if (data["event"] === "updateGraph") {
+    const graph = data["payload"]["graph"]
+    console.log(graph)
+    svgGroup.selectAll(".node").each(function (node, nodeId) {
+      if (graph[node] == 2) {
+        console.log("completed", node)
+        let select = d3.select(this)
+        select.classed("checked2", true);
+        select.classed("checked1", false);
+      }
+      if (graph[node] == 1) {
+        let select = d3.select(this)
+        select.classed("checked1", true);
+        select.classed("checked2", false);
+      }
+      if (graph[node] == 0) {
+        let select = d3.select(this)
+        select.classed("checked1", false);
+        select.classed("checked2", false);
+        select.classed("unchecked", true);
+      }
+    })
+  }
+})
+
 var g = new dagreD3.graphlib.Graph()
 .setGraph({ rankdir: "TB"})
 .setDefaultEdgeLabel(function () { return {}; });
@@ -109,110 +160,268 @@ svgGroup.selectAll(".node").on("mouseover", async function (event, nodeId) {
 
 
 // set the dimensions and margins of the graph
-var margin = {top: 30, right: 30, bottom: 70, left: 60},
-    width = 460 - margin.left - margin.right,
-    height = 400 - margin.top - margin.bottom;
+var margin = {top: 30, right: 0, bottom: 70, left: 200},
+    width = 480 - margin.left - margin.right,
+    height = 200 - margin.top - margin.bottom;
 
-// append the svg object to the body of the page
+// Append the SVG object to the body of the page
 var svg = d3.select("#my_dataviz")
     .append("svg")
     .attr("width", width + margin.left + margin.right)
     .attr("height", height + margin.top + margin.bottom)
     .append("g")
-    .attr("transform",
-        "translate(" + margin.left + "," + margin.top + ")");
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-// Initialize the X axis
-var x = d3.scaleBand()
-    .range([0, width - margin.right ])
-    .padding(0.2);
-var xAxis = svg.append("g")
-    .attr("transform", "translate(0," + height + ")")
+// A function that creates/updates the stacked bar chart
+async function updatePrediction(data) {
+    let value = data[0].prediction
+    let completed = data[0].completed
 
-// Initialize the Y axis
-var y = d3.scaleLinear()
-    .range([ height, 0]);
-var yAxis = svg.append("g")
-    .attr("class", "myYaxis")
+    // Clear existing elements
+    svg.selectAll("*").remove();
+
+    // Initialize the Y axis (now categorical)
+    let y = d3.scaleBand()
+        .range([0, height])
+        .padding(0.2);
+    let yAxis = svg.append("g");
+
+    // Initialize the X axis (now linear)
+    let x = d3.scaleLinear()
+        .range([0, width - margin.right])
+    let xAxis = svg.append("g")
+        .attr("transform", "translate(0," + height + ")")
 
 
-// A function that create / update the plot for a given variable:
-async function update(data) {
+    let brush = d3.brushX().extent([[0, height - y.bandwidth() - 4], [width, y.bandwidth() + 4]])
+        .on("brush", brushed)
+        .on("end", brushEnded);
 
-    // X axis
-    x.domain(d3.groupSort(data, ([d]) => -d.frequency, (d) => d.letter))
-    xAxis.transition().duration(1000).call(d3.axisBottom(x))
+    function brushed(event) {
+        if (!event.selection) return; // Ignore if no selection
+        let [x0, x1] = event.selection.map(x.invert); // Convert pixel to data
+        value = x1;
+        if (x0 !== 0) {
+            d3.select(this).call(brush.move, [0, x1]);
+        }
+        else if (x1 < completed) {
+            return
+        }
+        svg.select(".myPredictionValue text")
+            .attr('x', x(value + 5))
+            .text(d3.format('.0f')(value) + "%");
+    }
 
-    // Add Y axis
-    y.domain([0, 27 ]);
+    function brushEnded(event) {
+        if (!event.selection) {
+            d3.select(this).call(brush.move, [x(0), x(value)]); // Reset brush
+        }
+    }
+
+    // Extract subgroups (keys other than 'who')
+    const subgroups = Object.keys(data[0]).filter(k => k !== "who");
+
+    // Color scale
+    var color = d3.scaleOrdinal().domain(subgroups).range([d3.color("grey").copy({opacity: 0.5}), d3.color("steelblue")]);
+
+    // Update Y axis (categorical)
+    y.domain(data.map(d => d.who));
     yAxis.transition().duration(1000).call(d3.axisLeft(y));
-    // // Bars
-    // svg.selectAll("mybar")
-    //     .data(data)
-    //     .join("rect")
-    //     .attr("x", d => x(d.letter))
-    //     .attr("width", x.bandwidth())
-    //     .attr("fill", "#69b3a2")
-    // // no bar at the beginning thus:
-    //     .attr("height", d => height - y(0)) // always equal to 0
-    //     .attr("y", d => y(0))
+
+    // Update X axis (linear)
+    x.domain([0, 100]);
+    xAxis.transition().duration(1000).call(d3.axisBottom(x).tickValues(d3.range(0, 101, 25)));
+
+    svg.append("g")
+      .attr("class", "brush")
+      .call(brush)
+      .call(brush.move, function (d){
+        return [0, value].map(x);
+    })
 
 
-    // variable u: map data to existing bars
-    var u = svg.selectAll("rect")
+    svg.append("g")
+        .attr("fill", d3.color("steelblue"))
+        .selectAll()
         .data(data)
+        .join("rect")
+        .attr("y", d => y(d.who))
+        .attr("x", x(0)) // Start bars from zero
+        .attr("width", x(0)) // Initially zero width
+        .attr("height", y.bandwidth())
+        .transition().duration(1000)
+        .attr("x", d => x(0)) // Position based on stack start
+        .attr("width", d => x(d.completed) - x(0))
 
 
-    // update bars
-    u
+    svg.append("g")
+        .attr("class", "myPredictionValue")
+        .append("text")
+        .attr('x', x(value + 5))
+        .attr('y', y.bandwidth() - 10)
+        .style('fill', 'black')
+        .text(function (d) {return value + "%"})
+
+
+    svg.selectAll("mydots")
+        .data(subgroups)
         .enter()
-        .append("rect")
-        .attr("x", function(d) { return x(d.letter); })
-        .attr("width", x.bandwidth())
-        .merge(u)
-        .transition()
-        .duration(1000)
-            .attr("height", d => y(0) - y(d.frequency))
-            .attr("y", function(d) { return y(d.frequency); })
-        .attr("fill", "#69b3a2")
+        .append("circle")
+        .attr("cx", 206)
+        .attr("cy", function(d,i){ return 150 + i*25}) // 100 is where the first dot appears. 25 is the distance between dots
+        .attr("r", 7)
+        .style("fill", function(d){ return color(d)})
+
+    // Add one dot in the legend for each name.
+    svg.selectAll("mylabels")
+        .data(subgroups)
+        .enter()
+        .append("text")
+        .attr("x", 220)
+        .attr("y", function(d,i){ return 153.5 + i*25}) // 100 is where the first dot appears. 25 is the distance between dots
+        .style("fill", function(d){ return color(d)})
+        .text(function(d){ return d})
+        .attr("text-anchor", "left")
+        .style("alignment-baseline", "middle")
+}
+
+// Append the SVG object to the body of the page
+var svg2 = d3.select("#my_dataviz2")
+    .append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+    .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+async function updateProgress(data) {
+    // Initialize the Y axis (now categorical)
+    let y = d3.scaleBand()
+        .range([0, height])
+        .padding(0.2);
+    let yAxis = svg2.append("g");
+
+    // Initialize the X axis (now linear)
+    let x = d3.scaleLinear()
+        .range([0, width - margin.right])
+    let xAxis = svg2.append("g")
+        .attr("transform", "translate(0," + height + ")")
+
+    // Extract subgroups (keys other than 'who')
+    const subgroups = Object.keys(data[0]).filter(k => k !== "who");
+
+    // Color scale
+    let color = d3.scaleOrdinal().domain(subgroups).range(d3.schemeSet2);
+
+    // Update Y axis (categorical)
+    y.domain(data.map(d => d.who));
+    yAxis.transition().duration(1000).call(d3.axisLeft(y));
+
+    // Stack the data
+    var stackedData = d3.stack().keys(subgroups)(data);
+
+    // Update X axis (linear)
+    x.domain([0, 100]);
+    xAxis.transition().duration(1000).call(d3.axisBottom(x).tickValues(d3.range(0, 101, 25)));
+
+// Bind data to groups
+    var groups = svg2.selectAll(".barGroup")
+        .data(stackedData);
+
+    // Enter + Update groups
+    groups.enter()
+        .append("g")
+        .attr("class", "barGroup")
+        .merge(groups)
+        .attr("fill", d => color(d.key))
+        .selectAll("rect")
+        .data(d => d)
+        .join("rect")
+        .attr("y", d => y(d.data.who))
+        .attr("x", x(0)) // Start bars from zero
+        .attr("width", d => x(0) - x(0)) // Initially zero width
+        .attr("height", y.bandwidth())
+        .transition().duration(1000)
+        .attr("x", d => x(d[0])) // Position based on stack start
+        .attr("width", d => x(d[1]) - x(d[0])); // Width is the difference
+
+
+    svg2.selectAll("mydots")
+        .data(subgroups)
+        .enter()
+        .append("circle")
+        .attr("cx", 206)
+        .attr("cy", function(d,i){ return 150 + i*25}) // 100 is where the first dot appears. 25 is the distance between dots
+        .attr("r", 7)
+        .style("fill", function(d){ return color(d)})
+
+    // Add one dot in the legend for each name.
+    svg2.selectAll("mylabels")
+        .data(subgroups)
+        .enter()
+        .append("text")
+        .attr("x", 220)
+        .attr("y", function(d,i){ return 153.5 + i*25}) // 100 is where the first dot appears. 25 is the distance between dots
+        .style("fill", function(d){ return color(d)})
+        .text(function(d){ return d})
+        .attr("text-anchor", "left")
+        .style("alignment-baseline", "middle")
 }
 
 // Initialize plot
-update([
-        {letter: "Team Progress", frequency: 10},
-        {letter: "Your Progress", frequency: 0.03},
-        {letter: "Helped Progress", frequency: 0.03}
-    ])
+updatePrediction([
+    {who: "End Goal Completion %", prediction: 80, completed: 20, },
+])
 
-const backendServer = '127.0.0.1'
-// prime-lab.cs.vt.edu
-const animalId = localStorage.getItem("id")
-const ws = new WebSocket(`wss://${backendServer}:8000/ws/${animalId}`);
+updateProgress([
+    {who: "Progress Contributions", A: 80, B: 17, C: 3 },
+])
 
 
-ws.addEventListener("message", (event) => {
-  const data = JSON.parse(event.data)
-  if (data["event"] === "updateGraph") {
-    const graph = data["payload"]["graph"]
-    console.log(graph)
-    svgGroup.selectAll(".node").each(function (node, nodeId) {
-      if (graph[node] == 2) {
-        console.log("completed", node)
-        let select = d3.select(this)
-        select.classed("checked2", true);
-        select.classed("checked1", false);
-      }
-      if (graph[node] == 1) {
-        let select = d3.select(this)
-        select.classed("checked1", true);
-        select.classed("checked2", false);
-      }
-      if (graph[node] == 0) {
-        let select = d3.select(this)
-        select.classed("checked1", false);
-        select.classed("checked2", false);
-        select.classed("unchecked", true);
-      }
-    })
-  }
-})
+const sliderEl = document.querySelector("#rangeSlider")
+const sliderValue = document.querySelector("#rangeValue")
+const spanValue = document.querySelector("#timeSpent")
+
+if (sliderEl) {
+  let timeout;
+  sliderEl.addEventListener("input", (event) => {
+    const tempSliderValue = event.target
+    sliderValue.textContent = `${tempSliderValue.value} minutes`;
+    spanValue.textContent = sliderValue.textContent
+
+
+    clearTimeout(timeout)
+
+    if (+tempSliderValue.value === 0) {
+      const feedback = document.querySelector("#feedback")
+      const options = document.querySelector("#options")
+      feedback.style.display = "none";
+      options.style.display = "block";
+      timeout = setTimeout(() => {
+        updatePrediction([
+          {who: "End Goal Completion %", prediction: 40, completed: 20, },
+        ])
+      }, 1000)
+    }
+    else {
+      const feedback = document.querySelector("#feedback")
+      const options = document.querySelector("#options")
+      feedback.style.display = "block";
+      options.style.display = "none";
+      timeout = setTimeout(() => {
+        updatePrediction([
+          {who: "End Goal Completion %", prediction: 80, completed: 20, },
+        ])
+      }, 1000)
+
+    }
+
+    const progress = (parseInt(tempSliderValue.value) / parseInt(sliderEl.max)) * 100
+
+    sliderEl.style.background = `linear-gradient(to right, lightblue ${progress}%, #ccc ${progress}%)`;
+
+    const left = (((+sliderEl.value - +sliderEl.min) / (+sliderEl.max - +sliderEl.min)) * ((sliderValue.clientWidth - 8) - 8)) + 4;
+    sliderValue.style.left = `calc(${left}px - 30px)`;
+
+  })
+
+}

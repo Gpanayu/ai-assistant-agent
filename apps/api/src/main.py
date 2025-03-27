@@ -146,11 +146,8 @@ class GraphNode:
         if self.claimed_by != "":
             if completed == remaining:
                 self.work_status = 2
-                event = {
-                    "event": "notification",
-                    "payload": {"prompt": "", "options": []},
-                }
-                await socketManager.direct_message(id=self.claimed_by, msg=json.dumps(event))
+                editor_manager.update_profile(self.claimed_by, self.concepts)
+                await editor_manager.send_notification(self.claimed_by)
             else:
                 self.work_status = 1
             self.total = remaining
@@ -195,12 +192,52 @@ class EditorManager:
     def __init__(self):
         self.master = ""
         self.individual = {}
+        self.profiles = {}
+        self.help_queue = []
+
+    def update_profile(self, id, concepts):
+        self.profiles[id] = state
 
     def update_master(self, state):
         self.master = state
 
     def update_individual(self, id, state):
         self.individual[id] = state
+
+    async def send_notification(self, id):
+        if len(self.help_queue) == 0:
+            event = {
+                "event": "notification",
+                "payload": {
+                    "context": "hi hello bonjour",
+                    "help": False,
+                    "options": [
+                        {
+                            "title": "xyz",
+                            "stars": "4.5",
+                            "reasoning": "honk honk shoo"
+                        }
+                    ]
+                }
+            }
+            await socketManager.direct_message(id=id, msg=json.dumps(event))
+        else:
+            event = {
+                "event": "notification",
+                "payload": {
+                    "context": "hi hello bonjour",
+                    "help": True,
+                    "options": [
+                        {
+                            "title": "xyz",
+                            "stars": "4.5",
+                            "reasoning": "honk honk shoo"
+                        }
+                    ]
+                }
+            }
+            await socketManager.direct_message(id=id, msg=json.dumps(event))
+
 
     def get_ollama_response(self, prompt=""):
         api_url = "http://prime-lab.cs.vt.edu:11434/api/generate"
@@ -421,7 +458,6 @@ editor_manager = EditorManager()
 msgs = []
 state = ""
 cursor_positions = {}
-help_queue = []
 
 
 @app.websocket("/listen")
@@ -452,40 +488,11 @@ def dashboard(request: Request):
 
 
 @app.post("/notify")
-async def push_notification(notification: NotifyBody):
-    print(notification)
+async def push_notification(id: str, test: bool):
+    if test:
+        editor_manager.help_queue.append("hi")
+    await editor_manager.send_notification(id)
 
-    users = notification.users
-    options = notification.options
-
-    prompt = "Hey looks like you are finishing up with your task!\nHere are some suggestions:"
-    parsed_options = []
-    for i in options:
-        if i == "1":
-            parsed_options.append("Check in with your teammate")
-        if i == "2":
-            parsed_options.append("Work on task down the tree")
-        if i == "3":
-            parsed_options.append("Work on task on the same level")
-        if i == "4":
-            parsed_options.append("Wait for your team to catch up")
-        if i == "5":
-            parsed_options = []
-            prompt = "Hey looks like you are working on this for a while, would you like help?"
-            parsed_options.append("Yes, help would be nice")
-            parsed_options.append("No, I am good")
-
-    for i in users:
-        await socketManager.direct_message(
-            json.dumps(
-                {
-                    "event": "notification",
-                    "payload": {"prompt": prompt, "options": parsed_options},
-                }
-            ),
-            i,
-        )
-    return {"ok": 200}
 
 
 @app.post("/testFunction")
@@ -660,18 +667,18 @@ def reply_to_notif(body: ReplyBody):
             prompt += f"Error parsing code: {e}\n"
 
 
-# @app.on_event("startup")
-# @repeat_every(seconds=30)
-# async def monitor_progress():
-#     print(editor_manager.individual)
-#
-#     prompt = f"""You are a teacher and User {userWhoRequestedHelp} is stuck on the
-#     following code: {blaring_code}. Please select a teammate to help. Check
-#     whoever is closer to their individual solution. Give\n"""
-#
-#     editor_manager.get_ollama_response()
-#
-#     print("hi")
+@app.on_event("startup")
+@repeat_every(seconds=30)
+async def monitor_progress():
+    print(editor_manager.individual)
+
+    prompt = f"""You are a teacher and User {userWhoRequestedHelp} is stuck on the
+    following code: {blaring_code}. Please select a teammate to help. Check
+    whoever is closer to their individual solution. Give\n"""
+
+    editor_manager.get_ollama_response()
+
+    print("hi")
 
 
 class Chat(BaseModel):
@@ -685,6 +692,6 @@ async def ollama(flex: Chat):
     # response = editor_manager.generate_options_for_helping(
     #     flex.chat, flex.task, flex.time
     # )
-    response = editor_manager.completeness_check(flex.chat)
-    # response = editor_manager.get_ollama_response()
+    # response = editor_manager.completeness_check(flex.chat)
+    response = editor_manager.get_ollama_response(flex.chat)
     return response

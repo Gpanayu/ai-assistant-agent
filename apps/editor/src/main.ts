@@ -50,54 +50,6 @@ ws.addEventListener('message', (event) => {
   if (data['event'] === 'initial') {
     ytext.insert(0, data['payload']['doc']);
   }
-  if (data['event'] === 'notification') {
-    document
-      .querySelector<HTMLSpanElement>('#notification')!
-      .classList.add('active');
-    document.querySelector<HTMLSpanElement>('#content')!.innerText =
-      data['payload']['prompt'];
-    const options = document.querySelector<HTMLSpanElement>('#options')!;
-    options.innerHTML = '';
-
-    let timeleft = 20;
-    document.querySelector<HTMLProgressElement>('.round-time-bar').value =
-      timeleft;
-    document.querySelector<HTMLProgressElement>('.round-time-bar').max =
-      timeleft;
-    const downloadTimer = setInterval(function () {
-      if (timeleft == 0) {
-        document
-          .querySelector<HTMLSpanElement>('#notification')!
-          .classList.remove('active');
-        clearInterval(downloadTimer);
-
-        fetch(`https://${backendServer}:8000/reply`, {
-          method: 'POST',
-          headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ id: animalId, choice: '-1' }),
-        });
-      }
-      document.querySelector<HTMLProgressElement>('.round-time-bar').value =
-        timeleft;
-      timeleft -= 1;
-    }, 1000);
-
-    for (let option of data['payload']['options']) {
-      const label = document.createElement('label');
-      label.textContent = option;
-      const opt = document.createElement('input');
-      opt.type = 'radio';
-      opt.id = option;
-      opt.name = 'option[]';
-      label.prepend(opt);
-      options.append(label);
-      const br = document.createElement('br');
-      options.append(br);
-    }
-  }
 });
 
 export function updateGraph(nodeId: string) {
@@ -413,6 +365,30 @@ document.addEventListener(
   },
   false
 );
+
+// moved to smm.js for interaction with d3 graphs
+//
+// const sliderEl = document.querySelector<HTMLInputElement>("#rangeSlider")
+// const sliderValue = document.querySelector<HTMLDivElement>("#rangeValue")
+// const spanValue = document.querySelector<HTMLSpanElement>("#timeSpent")
+//
+// if (sliderEl) {
+//   sliderEl.addEventListener("input", (event: Event ) => {
+//     const tempSliderValue = event.target as HTMLInputElement;
+//     sliderValue.textContent = `${tempSliderValue.value} minutes`;
+//     spanValue.textContent = sliderValue.textContent
+//
+//     const progress = (parseInt(tempSliderValue.value) / parseInt(sliderEl.max)) * 100
+//
+//     sliderEl.style.background = `linear-gradient(to right, lightblue ${progress}%, #ccc ${progress}%)`;
+//
+//     const left = (((+sliderEl.value - +sliderEl.min) / (+sliderEl.max - +sliderEl.min)) * ((sliderValue.clientWidth - 8) - 8)) + 4;
+//     sliderValue.style.left = `calc(${left}px - 30px)`;
+//
+//   })
+// }
+//
+
 
 export function jumpToFunction(functionName: string) {
   const tree = syntaxTree(mainView.state);

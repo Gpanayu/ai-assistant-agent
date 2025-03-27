@@ -114,24 +114,83 @@
       <div class="notification-bg" />
       <div id="notification" class="notification">
         <div class="padding">
-          <h1 id="content">Hey!</h1>
-          <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
+          <h1 id="title">Hey!</h1>
+          <p id="context">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
           eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad
           minim veniam, quis nostrud exercitation ullamco laboris nisi ut
           aliquip ex ea commodo consequat. </p>
-          <div id="options">
-            <div>
-              <h3>How much time you willing to spend?</h2>
-              <input type="range"/>
+          <div id="for-helper">
+            <div class="info">
+              <h3 class="help-question">How much time are you willing to spend helping?</h2>
+              <div class="slider-container">
+                <div class="slider-values">
+                  <p>Pick A New Task</p>
+                  <div class="slider-wrapper">
+                    <div class="selected-value" id="rangeValue">0 minutes</div>
+                    <input
+                        type="range"
+                        min="0"
+                        max="5"
+                        value="0"
+                        step="1"
+                        class="custom-slider"
+                        id="rangeSlider"
+                        autocomplete="off"
+                        >
+                        <div class="step-markers">
+                          <div class="step-marker"></div>
+                          <div class="step-marker"></div>
+                          <div class="step-marker"></div>
+                          <div class="step-marker"></div>
+                          <div class="step-marker"></div>
+                        </div>
+                  </div>
+                  <p>5 Minute Help Session</p>
+                </div>
+              </div>
             </div>
-            <h3>?</h2>
           </div>
-          <div id="my_dataviz"></div>
-          <div>
+            <div class="info">
+              <div>
+                <h4>Suggestions</h4>
+                <p id="feedback"><b>Given that you want to spend <span
+                   id="timeSpent">0</span>
+                  helping:</b>
+                Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
+                eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim
+                ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut
+                aliquip ex ea commodo consequat.</p>
+                <ul id="options">
+                  <li>
+                    <button class="select">
+                      <div style="display: flex; align-items: center;
+                                  justify-content: space-between;
+                                  padding: 0">
+                        <h4 class="title">Task 1: Lorem</h4>
+                        <span style="border: 1px solid blue; padding: 5px;
+                                     border-radius: 100px; color: blue">Best Match</span>
+                      </div>
+                      <div style="display: flex; align-items: center;
+                                  padding: 0; margin-top: 10px;
+                                  margin-bottom: 10px">
+                        <span style="margin-right: 15px"> Skills Match </span>
+                        <div id="stars">
+                        </div>
+                      </div>
+                      <p>Estimated Time For Completion: </p>
+                      <p>Reasoning: </p>
+                    </button>
+                  </li>
+
+                </ul>
+              </div>
+              <div>
+                <div class="data-viz" id="my_dataviz"></div>
+                <div class="data-viz" id="my_dataviz2"></div>
+              </div>
+            </div>
             <button id="accept">Submit</button>
           </div>
-        </div>
-      </div>
     </main>
     <script>
 
