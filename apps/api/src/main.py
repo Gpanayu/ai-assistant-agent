@@ -1,4 +1,5 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
+import asyncio
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
@@ -54,6 +55,8 @@ class ReplyBody(BaseModel):
 class SocketManager:
     def __init__(self):
         self.connections: list[WebSocket] = []
+        self.total_seconds=20*60
+        self.countdown_task = None
 
     async def connect(self, ws: WebSocket, id: int):
         await ws.accept()
@@ -61,6 +64,8 @@ class SocketManager:
         self.connections.append(ws)
         global state
         conns = [conn for conn in self.connections if conn.id != "control"]
+
+
         if len(conns) == 1 and ws.id != "control":
             with open("study_problem_blank.py", "r") as file:
                 code = file.read()
@@ -71,6 +76,12 @@ class SocketManager:
 
     def disconnect(self, ws: WebSocket):
         self.connections.remove(ws)
+        conns = [conn for conn in self.connections if conn.id != "control"]
+        if len(conns) == 0:
+            if self.countdown_task:
+                self.countdown_task.cancel()
+                print("Cancelling countdown")
+        
 
     async def broadcast(self, msg: str):
         for ws in self.connections:
@@ -81,6 +92,23 @@ class SocketManager:
             if ws.id == id:
                 await ws.send_text(msg)
 
+    async def broadcast_countdown(self):
+        try:
+            while self.total_seconds > 0:
+                minutes, seconds = divmod(self.total_seconds, 60)
+                event={
+                    "event": "countdown",
+                    "payload": {"minutes": minutes, "seconds": seconds
+                                }
+                }
+                await self.broadcast(json.dumps(event))
+                self.total_seconds -= 1
+                await asyncio.sleep(1)
+            await self.broadcast(json.dumps({"event" : "countDownEnd"}))
+        except asyncio.CancelledError:
+            self.broadcast(json.dumps({"event" : "timer"}))
+            
+        
 
 class AudioProcessor:
     def __init__(self):
@@ -488,6 +516,21 @@ def dashboard(request: Request):
         "dash.html", {"request": request, "connections": socketManager.connections}
     )
 
+@app.get("/startTimer", response_class=HTMLResponse)
+def start_timer(request: Request, background_tasks: BackgroundTasks):
+    if socketManager.countdown_task:
+        socketManager.countdown_task.cancel
+    socketManager.total_seconds=20*60
+    background_tasks.add_task(socketManager.broadcast_countdown)
+
+    return templates.TemplateResponse("index.html", {"request": request})
+
+
+@app.get("/stopTimer", response_class=HTMLResponse)
+def stop_timer(request: Request):
+    if socketManager.countdown_task:
+        socketManager.countdown_task.cancel()
+    return templates.TemplateResponse("index.html", {"request": request})
 
 @app.post("/notify")
 async def push_notification(id: str, test: bool):

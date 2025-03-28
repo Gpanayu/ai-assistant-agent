@@ -50,7 +50,70 @@ ws.addEventListener('message', (event) => {
   if (data['event'] === 'initial') {
     ytext.insert(0, data['payload']['doc']);
   }
+  if (data['event'] == 'countdown') {
+    const minutes = data['payload']['minutes']
+    const seconds = data['payload']['seconds']
+    minutesElement.innerText = minutes.toString();
+    secondsElement.innerText = seconds.toString().padStart(2, '0');
+  }
+  if (data['event'] === 'countdownFinished') {
+    alert("The countdown has finished!");
+  }
+  if (data['event'] === 'notification') {
+    document
+      .querySelector<HTMLSpanElement>('#notification')!
+      .classList.add('active');
+    document.querySelector<HTMLSpanElement>('#content')!.innerText =
+      data['payload']['prompt'];
+    const options = document.querySelector<HTMLSpanElement>('#options')!;
+    options.innerHTML = '';
+
+    let timeleft = 20;
+    document.querySelector<HTMLProgressElement>('.round-time-bar').value =
+      timeleft;
+    document.querySelector<HTMLProgressElement>('.round-time-bar').max =
+      timeleft;
+    const downloadTimer = setInterval(function () {
+      if (timeleft == 0) {
+        document
+          .querySelector<HTMLSpanElement>('#notification')!
+          .classList.remove('active');
+        clearInterval(downloadTimer);
+
+        fetch(`https://${backendServer}:8000/reply`, {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ id: animalId, choice: '-1' }),
+        });
+      }
+      document.querySelector<HTMLProgressElement>('.round-time-bar').value =
+        timeleft;
+      timeleft -= 1;
+    }, 1000);
+
+    for (let option of data['payload']['options']) {
+      const label = document.createElement('label');
+      label.textContent = option;
+      const opt = document.createElement('input');
+      opt.type = 'radio';
+      opt.id = option;
+      opt.name = 'option[]';
+      label.prepend(opt);
+      options.append(label);
+      const br = document.createElement('br');
+      options.append(br);
+    }
+  }
 });
+
+
+const minutesElement = document.getElementById('minutes') as HTMLSpanElement;
+const secondsElement = document.getElementById('seconds') as HTMLSpanElement;
+
+
 
 export function updateGraph(nodeId: string) {
   ws.send(JSON.stringify({ event: 'graphUpdated', payload: { node: nodeId } }));
@@ -265,11 +328,10 @@ function appendToHistory(output: string, all: boolean) {
 
     const authored = document.createElement('span');
     authored.className = 'outputLine';
-    authored.innerHTML = `<p></p>${
-      command[2]
+    authored.innerHTML = `<p></p>${command[2]
         ? '<i>Ran by Collaborative Editor</i>'
         : '<i>Ran from Personal Playground</i>'
-    }`;
+      }`;
     authored.style.color = 'yellow';
 
     if (i % 2 === 1) {
@@ -291,14 +353,14 @@ function clearCode() {
 }
 
 function toggleView() {
-    fetch(`https://${backendServer}:8000/reply`, {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ id: animalId, choice: "Help", text: "" }),
-    });
+  fetch(`https://${backendServer}:8000/reply`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ id: animalId, choice: "Help", text: "" }),
+  });
 }
 
 function closeNotif() {
@@ -400,7 +462,7 @@ export function jumpToFunction(functionName: string) {
         if (
           nameNode &&
           mainView.state.doc.sliceString(nameNode.from, nameNode.to) ===
-            functionName
+          functionName
         ) {
 
           let from = node.node.from;
