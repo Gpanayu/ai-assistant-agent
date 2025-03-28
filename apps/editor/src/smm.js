@@ -8,20 +8,56 @@ const ws = new WebSocket(`wss://${backendServer}:8000/ws/${animalId}`);
 ws.addEventListener("message", (event) => {
   const data = JSON.parse(event.data)
   if (data['event'] === 'notification') {
-    console.log('honk')
     const notification = document.querySelector(".notification")
     const title = document.querySelector("#title")
     const context = document.querySelector("#context")
     context.textContent = data["payload"]["context"]
 
-    for (let option of data["payload"]["options"]) {
-      console.log(option)
-    }
-
-    const nice = ["Nice work! You got it done", "Great job! You wrapped it up", "Awesome! You finished your task", "Hey! You nailed it"]
-    title.textContent = nice[Math.floor(Math.random() * (nice.length - 1))]
     notification.classList += " active"
-    if (!data['payload']['help']) {
+    console.log(data['payload']['help'])
+    if (data['payload']['help'] === "doneNoHelp") {
+      const helper = document.querySelector("#for-helper")
+      helper.style.display = "none"
+      title.textContent = "Task Complete!"
+
+      for (let option of data["payload"]["options"]) {
+        console.log(option)
+        const li = document.createElement("li")
+        const button = document.createElement("button")
+        button.className = "select";
+        li.append(button)
+
+        const upperDiv = document.createElement("div")
+        upperDiv.style = "display: flex; align-items: center; justify-content: space-between; padding: 0"
+        const title = document.createElement("h4")
+        title.className = "title"
+        title.textContent = option["task_title"]
+        upperDiv.append(title)
+        button.append(upperDiv)
+
+        const reasoning = document.createElement("p")
+        reasoning.textContent = `Reasoning: ${option["reasoning"]}`
+        button.append(reasoning)
+
+        const challenge = document.createElement("p")
+        challenge.textContent = `Estimated Time: ${option["estimated_time_in_seconds"]}`
+        button.append(challenge)
+
+        document.querySelector("#options").append(li)
+      }
+    }
+    else if (data['payload']['help'] === "doneHelp"){
+      const helper = document.querySelector("#for-helper")
+      helper.style.display = "block"
+      title.textContent = "Collaborative Opportunity!"
+    }
+    else if (data['payload']['help'] === "helpSystem") {
+      const helper = document.querySelector("#for-helper")
+      helper.style.display = "none"
+      title.textContent = "Check-in"
+    }
+    else if (data['payload']['help'] === "helpRequest") {
+      title.textContent = "Help Request"
       const helper = document.querySelector("#for-helper")
       helper.style.display = "none"
     }
@@ -165,7 +201,7 @@ var margin = {top: 30, right: 0, bottom: 70, left: 200},
     height = 200 - margin.top - margin.bottom;
 
 // Append the SVG object to the body of the page
-var svg = d3.select("#my_dataviz")
+var svg3 = d3.select("#my_dataviz")
     .append("svg")
     .attr("width", width + margin.left + margin.right)
     .attr("height", height + margin.top + margin.bottom)
@@ -178,18 +214,18 @@ async function updatePrediction(data) {
     let completed = data[0].completed
 
     // Clear existing elements
-    svg.selectAll("*").remove();
+    svg3.selectAll("*").remove();
 
     // Initialize the Y axis (now categorical)
     let y = d3.scaleBand()
         .range([0, height])
         .padding(0.2);
-    let yAxis = svg.append("g");
+    let yAxis = svg3.append("g");
 
     // Initialize the X axis (now linear)
     let x = d3.scaleLinear()
         .range([0, width - margin.right])
-    let xAxis = svg.append("g")
+    let xAxis = svg3.append("g")
         .attr("transform", "translate(0," + height + ")")
 
 
@@ -207,7 +243,7 @@ async function updatePrediction(data) {
         else if (x1 < completed) {
             return
         }
-        svg.select(".myPredictionValue text")
+        svg3.select(".myPredictionValue text")
             .attr('x', x(value + 5))
             .text(d3.format('.0f')(value) + "%");
     }
@@ -232,7 +268,7 @@ async function updatePrediction(data) {
     x.domain([0, 100]);
     xAxis.transition().duration(1000).call(d3.axisBottom(x).tickValues(d3.range(0, 101, 25)));
 
-    svg.append("g")
+    svg3.append("g")
       .attr("class", "brush")
       .call(brush)
       .call(brush.move, function (d){
@@ -240,7 +276,7 @@ async function updatePrediction(data) {
     })
 
 
-    svg.append("g")
+    svg3.append("g")
         .attr("fill", d3.color("steelblue"))
         .selectAll()
         .data(data)
@@ -254,7 +290,7 @@ async function updatePrediction(data) {
         .attr("width", d => x(d.completed) - x(0))
 
 
-    svg.append("g")
+    svg3.append("g")
         .attr("class", "myPredictionValue")
         .append("text")
         .attr('x', x(value + 5))
@@ -263,7 +299,7 @@ async function updatePrediction(data) {
         .text(function (d) {return value + "%"})
 
 
-    svg.selectAll("mydots")
+    svg3.selectAll("mydots")
         .data(subgroups)
         .enter()
         .append("circle")
@@ -273,7 +309,7 @@ async function updatePrediction(data) {
         .style("fill", function(d){ return color(d)})
 
     // Add one dot in the legend for each name.
-    svg.selectAll("mylabels")
+    svg3.selectAll("mylabels")
         .data(subgroups)
         .enter()
         .append("text")

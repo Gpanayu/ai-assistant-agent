@@ -81,7 +81,7 @@ class SocketManager:
             if self.countdown_task:
                 self.countdown_task.cancel()
                 print("Cancelling countdown")
-        
+
 
     async def broadcast(self, msg: str):
         for ws in self.connections:
@@ -107,8 +107,8 @@ class SocketManager:
             await self.broadcast(json.dumps({"event" : "countDownEnd"}))
         except asyncio.CancelledError:
             self.broadcast(json.dumps({"event" : "timer"}))
-            
-        
+
+
 
 class AudioProcessor:
     def __init__(self):
@@ -165,17 +165,34 @@ class GraphNode:
                 self.claimed_by = id
                 self.work_status = 1
                 self.start_time = datetime.now()
+                editor_manager.message_history.append(
+                        {
+                            "role": "user",
+                            "content": f"{self.claimed_by} is working on {self.name}"
+                        }
+                )
             elif self.claimed_by == id and self.work_status == 1:
                 self.claimed_by = ""
                 self.work_status = 0
+                editor_manager.message_history.append(
+                        {
+                            "role": "user",
+                            "content": f"{self.claimed_by} is not working on {self.name}"
+                        }
+                )
                 self.start_time = None
 
     async def update_completed(self, completed: int, remaining: int):
         if self.claimed_by != "":
-            if completed == remaining:
+            if completed == remaining and remaining != 0:
                 self.work_status = 2
                 editor_manager.update_profile(self.claimed_by, self.concepts)
-                await editor_manager.send_notification(self.claimed_by)
+                await editor_manager.send_notification(
+                        id=self.claimed_by,
+                        task=self.name,
+                        done=True,
+                        time=get_time_diff(self.start_time)
+                )
             else:
                 self.work_status = 1
             self.total = remaining
@@ -223,6 +240,40 @@ class EditorManager:
         self.profiles = {}
         self.help_queue = []
 
+        self.message_history = [
+                        {
+                            "role": "user",
+                            "content": (
+                                "Keep all response times 1 sentence long. "
+                            )
+                        },
+                        {
+                            "role": "user",
+                            "content": """
+                            You are a task helping assistant. The project is
+                            linked like a graph
+
+                            The tasks are linked like this:
+                            (Customer, view_menu)
+                            (Customer, create_order)
+                            (Restaurant, inventory_helper)
+                            (Restaurant, restock_inventory)
+                            (Restaurant, cook_time_helper)
+                            (create_order, view_order_summary)
+                            (create_order, calculate_order_cost)
+                            (create_order, clear_order)
+                            (create_order, add_to_queue)
+                            (view_order_summary, get_receipt)
+                            (calculate_order_cost, add_to_order)
+                            (calculate_order_cost, remove_from_order)
+                            (inventory_helper, cook_order)
+                            (cook_time_helper, cook_order)
+                            (add_to_queue, cook_order)
+                            (cook_time_helper, average_cook_time)
+                            """
+                        }
+        ]
+
     def update_profile(self, id, concepts):
         self.profiles[id] = state
 
@@ -232,58 +283,79 @@ class EditorManager:
     def update_individual(self, id, state):
         self.individual[id] = state
 
-    async def send_notification(self, id):
-        if len(self.help_queue) == 0:
-            event = {
-                "event": "notification",
-                "payload": {
-                    "context": "hi hello bonjour",
-                    "help": False,
-                    "options": [
-                        {
-                            "title": "abc",
-                            "stars": "4",
-                            "eta": "2",
-                            "reasoning": "honk honk shoo"
-                        },
-                    ]
+    async def send_notification(self, id, task, done, time=0):
+        if done:
+            response = self.generate_options_for_new_task(id, task, time)
+            if len(self.help_queue) == 0:
+                event = {
+                    "event": "notification",
+                    "payload": {
+                        "context": f"Great work finishing {task} here are some suggestions for next steps",
+                        "help": "doneNoHelp",
+                        "options": json.loads(response).get('options')
+                    }
                 }
-            }
-            await socketManager.direct_message(id=id, msg=json.dumps(event))
+
+                await socketManager.direct_message(id=id, msg=json.dumps(event))
+            else:
+                (helpee, task) = self.help_queue.pop()
+                context = self.get_ollama_response(f"How can I help {helpee} with {task}?")
+                event = {
+                    "event": "notification",
+                    "payload": {
+                        "context": context,
+                        "help": "doneHelp",
+                        "options": [
+                            {
+                                "title": "abc",
+                                "stars": "4",
+                                "eta": "2",
+                                "reasoning": "honk honk shoo"
+                            },
+                        ]
+                    }
+                }
+                await socketManager.direct_message(id=id, msg=json.dumps(event))
+                print(event)
         else:
             event = {
-                "event": "notification",
-                "payload": {
-                    "context": "hi hello bonjour",
-                    "help": True,
-                    "options": [
-                        {
-                            "title": "abc",
-                            "stars": "4",
-                            "eta": "2",
-                            "reasoning": "honk honk shoo"
-                        },
-                    ]
-                }
-            }
+                    "event": "notification",
+                    "payload": {
+                        "context": "",
+                        "help": "helpSystem",
+                        "options": [
+                            {
+                                "title": "abc",
+                                "stars": "4",
+                                "eta": "2",
+                                "reasoning": "honk honk shoo"
+                                },
+                            ]
+                        }
+                    }
             await socketManager.direct_message(id=id, msg=json.dumps(event))
 
-
     def get_ollama_response(self, prompt=""):
-        api_url = "http://prime-lab.cs.vt.edu:11434/api/generate"
-        print(prompt)
+        api_url = "http://prime-lab.cs.vt.edu:11434/api/chat"
+        self.message_history.append({
+            "role": "user",
+            "content": prompt
+        })
         try:
             headers = {
                     "Content-Type": "application/json"
             }
             payload = {
                     "model": "gemma3:27b",
-                    "prompt": prompt,
+                    "messages": self.message_history,
+                    "format": "json",
                     "stream": False,
             }
             response = requests.post(url=api_url, data=json.dumps(payload), headers=headers)
+
             if response.status_code == 200:
-                return response.json()
+                self.message_history.append(response.json().get("message"))
+                return response.json().get("message").get("content")
             else:
                 return {"error": f"Request failed with status code {response.status_code}", "details": response.text}
         except requests.exceptions.RequestException as e:
@@ -293,59 +365,16 @@ class EditorManager:
         """
         Generates help options for the user to choose from
         """
-        prompt = (f"Pretend you are a teacher. User {id} has completed {task} in {time} seconds \n")
+        prompt = (f"User {id} has completed {task} in {time} seconds \n")
 
-        conversion = {
-                0: "not-started",
-                1: "started",
-                2: "complete"
-                }
-
-        work_statuses = [
-            {node: conversion[graph_manager.graph[node].work_status]}
-            for node in graph_manager.graph
-        ]
-
-        current_state = dict(ChainMap(*work_statuses))
-        thing = "\n ".join([f"{key} is {value}" for key, value in current_state.items()])
-        prompt += f"Here is the current state of the project: {thing}\n"
-        prompt += (
-            """The tasks are linked like this:
-            (Customer, view_menu)
-            (Customer, create_order)
-            (Restaurant, inventory_helper)
-            (Restaurant, restock_inventory)
-            (Restaurant, cook_time_helper)
-            (create_order, view_order_summary)
-            (create_order, calculate_order_cost)
-            (create_order, clear_order)
-            (create_order, add_to_queue)
-            (view_order_summary, get_receipt)
-            (calculate_order_cost, add_to_order)
-            (calculate_order_cost, remove_from_order)
-            (inventory_helper, cook_order)
-            (cook_time_helper, cook_order)
-            (add_to_queue, cook_order)
-            (cook_time_helper, average_cook_time)
-            \n"""
-
-                )
-
-        prompt += (f"Based on the state of the project "
-                   f"Suggest 3 options for {id}. 1 option should consider "
-                   "their teammate's code and give context to how close they are"
-                   "to completing, "
-                   f"another option should be a direct dependency of {task}, the final "
-                   f"option should not be a dependency of {task}."
-                   "Give 1 sentence of context and an approximate time in seconds "
-                   "estimate for each suggestion\n"
-                   "Return as an array {{suggestion, time}}. "
+        prompt += (f"Based on the current state of the project "
+                   f"Suggest 3 options for {id}."
+                   "Return as options "
+                   "{{task_title, difficulty_stars, estimated_time_in_seconds, reasoning}}"
                    "Only return this array")
 
         response = self.get_ollama_response(prompt=prompt)
-        cleaned = re.sub(r'```json\n|```', '', response.get("response")).strip()
-        data = json.loads(cleaned)
-        return data
+        return response
 
     def completeness_check(self, id):
         prompt = ""
@@ -369,9 +398,7 @@ class EditorManager:
                    "Only return this array")
 
         response = self.get_ollama_response(prompt=prompt)
-        # cleaned = re.sub(r'```json\n|```', '', response.get("response")).strip()
-        # data = json.loads(cleaned)
-        return response.get("response")
+        return response
 
 
 class FunctionReplacer:
@@ -532,12 +559,14 @@ def stop_timer(request: Request):
         socketManager.countdown_task.cancel()
     return templates.TemplateResponse("index.html", {"request": request})
 
-@app.post("/notify")
-async def push_notification(id: str, test: bool):
-    if test:
-        editor_manager.help_queue.append("hi")
-    await editor_manager.send_notification(id)
 
+@app.post("/notify")
+async def push_notification(id: str, task: str, done: bool, test: bool):
+    if test:
+        editor_manager.help_queue.append(("Pickles", "create_order"))
+    else:
+        editor_manager.help_queue = []
+    await editor_manager.send_notification(id, task, done)
 
 
 @app.post("/testFunction")
@@ -697,33 +726,14 @@ def reply_to_notif(body: ReplyBody):
     if body.choice == "":
         pass
 
-    for user, state in editor_manager.individual.items():
-        prompt = f"\nUser {user} current code is: {state}\n"
-
-        try:
-            parsed_code = ast.parse(dedent(state))
-            for node in parsed_code.body:
-                if isinstance(node, ast.FunctionDef):
-                    function_name = node.name
-                    if hasattr(study_problem_sol, function_name):
-                        solution_function = getattr(study_problem_sol, function_name)
-                        prompt += f"Solution for {function_name} is: {solution_function.__doc__}\n"
-        except Exception as e:
-            prompt += f"Error parsing code: {e}\n"
-
 
 @app.on_event("startup")
-@repeat_every(seconds=30)
+@repeat_every(seconds=10)
 async def monitor_progress():
-    print(editor_manager.individual)
-
-    prompt = f"""You are a teacher and User {userWhoRequestedHelp} is stuck on the
-    following code: {blaring_code}. Please select a teammate to help. Check
-    whoever is closer to their individual solution. Give\n"""
-
-    editor_manager.get_ollama_response()
-
-    print("hi")
+    for key, value in graph_manager.graph.items():
+        if get_time_diff(value.start_time) > 80:
+            await editor_manager.send_notification(value.claimed_by, "", False)
+            graph_manager.graph[key].start_time = datetime.now()
 
 
 class Chat(BaseModel):

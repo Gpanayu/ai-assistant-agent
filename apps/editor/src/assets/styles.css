@@ -174,7 +174,7 @@ h4 {
 }
 
 .notification {
-  visibility: hidden; /* Hidden by default. Visible on click */
+  visibility: hidden;
   width: 1000px; /* Set a default minimum width */
   color: #000;
   background-color: #fff; /* Black background color */
@@ -184,13 +184,18 @@ h4 {
   /* bring your own prefixes */
   transform: translate(-50%, -50%);
   border-radius: 5px; /* Rounded borders */
-  z-index: 2;
+  z-index: -1;
   box-shadow: rgba(0, 0, 0, 0.15) 1.95px 1.95px 2.6px;
+
 
   .info {
     display: grid;
     grid-template-columns: 400px auto;
     margin-top: 10px;
+  }
+
+  #my_dataviz {
+    display: none;
   }
 
   .range {
@@ -239,7 +244,7 @@ h4 {
         display: flex;
         flex-direction: column;
         width: 100%;
-        padding: 15px;
+        padding: 10px;
         background-color: transparent;
         margin-top: 10px;
         text-align: left;
@@ -248,7 +253,7 @@ h4 {
         border: 1px solid black;
         border-radius: 5px;
         p {
-          margin-top: 10px;
+          margin-top: 0px;
         }
         .title {
           margin-top: 10px;
@@ -264,14 +269,23 @@ h4 {
 
 }
 
+
 .notification.active {
-  visibility: visible !important; /* Show the snackbar */
+  visibility: initial;
+
+  #my_dataviz {
+    display: block
+  }
+
+
+  z-index: 2;
 
   /* Add animation: Take 0.5 seconds to fade in and out the snackbar.
   However, delay the fade out process for 2.5 seconds */
   -webkit-animation: fadein 0.5s, fadeout 0.5s 2.5s;
   animation: fadein 0.5s, fadeout 0.5s 2.5s;
 }
+
 
 .notification.active > .notification-bg {
   visibility: visible !important; /* Show the snackbar */
