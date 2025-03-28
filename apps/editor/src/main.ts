@@ -236,7 +236,7 @@ document
   .querySelector('#test-playground')!
   .addEventListener('click', testCodePlayground);
 document.querySelector('#clear')!.addEventListener('click', clearCode);
-document.querySelector('#toggle')!.addEventListener('click', toggleView);
+document.querySelector('#helpMe')!.addEventListener('click', helpMe);
 document.querySelector('#accept')!.addEventListener('click', acceptNotif);
 document.querySelector('#handle')!.addEventListener('mousedown', handle_resize);
 
@@ -295,6 +295,9 @@ async function testCodePlayground() {
   const code = secondaryView.state.doc.toString();
   const channel = animalId;
 
+  const icon = document.querySelector("#test-playground-icon")
+  icon.className = "fa-solid fa-spinner"
+
   await fetch(`https://${backendServer}:8000/testFunction`, {
     method: 'POST',
     headers: {
@@ -303,6 +306,8 @@ async function testCodePlayground() {
     },
     body: JSON.stringify({ code: code, channel: channel }),
   });
+
+  icon.className = "fa-solid fa-flask"
 }
 
 function appendToHistory(output: string, all: boolean) {
@@ -352,7 +357,7 @@ function clearCode() {
   history = [];
 }
 
-function toggleView() {
+function helpMe() {
   fetch(`https://${backendServer}:8000/reply`, {
     method: 'POST',
     headers: {
@@ -363,11 +368,6 @@ function toggleView() {
   });
 }
 
-function closeNotif() {
-  document
-    .querySelector<HTMLSpanElement>('#notification')!
-    .classList.remove('active');
-}
 
 function acceptNotif() {
   const selectedOption = document.querySelector(

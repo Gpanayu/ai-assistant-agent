@@ -20,6 +20,8 @@ ws.addEventListener("message", (event) => {
       helper.style.display = "none"
       title.textContent = "Task Complete!"
 
+      document.querySelector("#options").innerHTML = ""
+
       for (let option of data["payload"]["options"]) {
         console.log(option)
         const li = document.createElement("li")

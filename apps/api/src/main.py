@@ -298,8 +298,11 @@ class EditorManager:
 
                 await socketManager.direct_message(id=id, msg=json.dumps(event))
             else:
-                (helpee, task) = self.help_queue.pop()
-                context = self.get_ollama_response(f"How can I help {helpee} with {task}?")
+                helpee = self.help_queue.pop()
+                prompt = f"Give me some context about {helpee}s code\n"
+                prompt += f"Here is their code {self.individual[helpee]}"
+                prompt += "Keep the response to 1 sentence."
+                context = self.get_ollama_response(prompt)
                 event = {
                     "event": "notification",
                     "payload": {
@@ -451,7 +454,7 @@ class FunctionReplacer:
         with open(self.main_file, "w") as f:
             f.write(new_code)
 
-    async def run_tests(self,user):
+    async def run_tests(self, user):
         try:
             print("Running test cases...")
             test_cases = ""
@@ -459,6 +462,10 @@ class FunctionReplacer:
                 parts = re.split(r"_", self.function_name, maxsplit=2)
                 test_cases = f"{parts[0]}_{parts[1]}"
                 print(f"test_{test_cases}")
+
+            if graph_manager.graph[self.function_name].work_status == 2:
+                print("Already complete")
+                return
 
             result = subprocess.run(
                 [
@@ -563,7 +570,7 @@ def stop_timer(request: Request):
 @app.post("/notify")
 async def push_notification(id: str, task: str, done: bool, test: bool):
     if test:
-        editor_manager.help_queue.append(("Pickles", "create_order"))
+        editor_manager.help_queue.append("Pickles")
     else:
         editor_manager.help_queue = []
     await editor_manager.send_notification(id, task, done)
@@ -723,15 +730,15 @@ def lookup_description(node):
 def reply_to_notif(body: ReplyBody):
     # user_response(body.id, body.choice)
     print(body.id, body.choice)
-    if body.choice == "":
-        pass
+    if body.choice == "Help":
+        editor_manager.help_queue.append(body.id)
 
 
 @app.on_event("startup")
 @repeat_every(seconds=10)
 async def monitor_progress():
     for key, value in graph_manager.graph.items():
-        if get_time_diff(value.start_time) > 80:
+        if get_time_diff(value.start_time) > 80 and value.work_status == 1:
             await editor_manager.send_notification(value.claimed_by, "", False)
             graph_manager.graph[key].start_time = datetime.now()
 
