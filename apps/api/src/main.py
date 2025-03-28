@@ -213,10 +213,11 @@ class EditorManager:
                     "help": False,
                     "options": [
                         {
-                            "title": "xyz",
-                            "stars": "4.5",
+                            "title": "abc",
+                            "stars": "4",
+                            "eta": "2",
                             "reasoning": "honk honk shoo"
-                        }
+                        },
                     ]
                 }
             }
@@ -229,10 +230,11 @@ class EditorManager:
                     "help": True,
                     "options": [
                         {
-                            "title": "xyz",
-                            "stars": "4.5",
+                            "title": "abc",
+                            "stars": "4",
+                            "eta": "2",
                             "reasoning": "honk honk shoo"
-                        }
+                        },
                     ]
                 }
             }
@@ -259,7 +261,7 @@ class EditorManager:
         except requests.exceptions.RequestException as e:
             return {"error": str(e)}
 
-    def generate_options_for_helping(self, id: str, task: str, time: int) -> str:
+    def generate_options_for_new_task(self, id: str, task: str, time: int) -> str:
         """
         Generates help options for the user to choose from
         """
