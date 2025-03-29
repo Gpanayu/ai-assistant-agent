@@ -1,16 +1,16 @@
 import {jumpToFunction} from "./main"
 
-const backendServer = '0.0.0.0'
+const backendServer = '127.0.0.1'
 // prime-lab.cs.vt.edu
 const animalId = localStorage.getItem("id")
 const ws = new WebSocket(`wss://${backendServer}:8000/ws/${animalId}`);
 
 let answer = ""
+let code = false
 
 ws.addEventListener("message", (event) => {
   const data = JSON.parse(event.data)
   if (data['event'] === 'notification') {
-    console.log("hi")
     const notification = document.querySelector(".notification")
     const title = document.querySelector("#title")
     const context = document.querySelector("#context")
@@ -21,13 +21,14 @@ ws.addEventListener("message", (event) => {
     let result = {who: "Progress Contributions"}
     for (const user in progressInitData){
       const percentage = ((progressInitData[user].completed / totalPossible) * 100).toFixed(2);
-      result[user] = parseFloat(percentage); 
+      result[user] = parseFloat(percentage);
     }
     console.log([result])
     updateProgress([result])
     notification.classList += " active"
     console.log(data['payload']['help'])
     if (data['payload']['help'] === "doneNoHelp") {
+      code = true
       const helper = document.querySelector("#for-helper")
       helper.style.display = "none"
       title.textContent = "Task Complete!"
@@ -53,7 +54,6 @@ ws.addEventListener("message", (event) => {
           // Optional: if you also want to add 'active' to the clicked one
           button.classList.add("active");
           answer = title.textContent
-          console.log(title.textContent);
         })
 
         const reasoning = document.createElement("p")
@@ -73,6 +73,7 @@ ws.addEventListener("message", (event) => {
       title.textContent = "Collaborative Opportunity!"
     }
     else if (data['payload']['help'] === "helpSystem") {
+      code = false
       const helper = document.querySelector("#for-helper")
       helper.style.display = "none"
       title.textContent = "Looks like you are stuck! Would you like to ask for help?"
@@ -86,6 +87,13 @@ ws.addEventListener("message", (event) => {
         const button = document.createElement("button")
         button.className = "select";
         li.append(button)
+
+        button.addEventListener("click", () => {
+          document.querySelectorAll("#options button.active").forEach(btn => btn.classList.remove("active"));
+          // Optional: if you also want to add 'active' to the clicked one
+          button.classList.add("active");
+          answer = title.textContent
+        })
 
         const upperDiv = document.createElement("div")
         upperDiv.style = "display: flex; align-items: center; justify-content: space-between; padding: 0"
@@ -105,11 +113,6 @@ ws.addEventListener("message", (event) => {
 
         document.querySelector("#options").append(li)
       }
-    }
-    else if (data['payload']['help'] === "helpRequest") {
-      title.textContent = "Help Request"
-      const helper = document.querySelector("#for-helper")
-      helper.style.display = "none"
     }
   }
   if (data["event"] === "updateGraph") {
@@ -140,8 +143,11 @@ ws.addEventListener("message", (event) => {
 document.querySelector('#accept').addEventListener('click', acceptNotif);
 
 function acceptNotif() {
-  jumpToFunction(answer)
-  ws.send(JSON.stringify({ event: "updateNode", payload: { node: answer, id: animalId } }))
+
+  if (code) {
+    jumpToFunction(answer)
+    ws.send(JSON.stringify({ event: "updateNode", payload: { node: answer, id: animalId } }))
+  }
 
   document
     .querySelector('#notification')

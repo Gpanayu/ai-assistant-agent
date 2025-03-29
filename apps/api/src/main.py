@@ -237,7 +237,7 @@ class GraphManager:
             "payload": {"graph": dict(ChainMap(*work_statuses))},
         }
         await socketManager.broadcast(json.dumps(event))
-    
+
     def get_task_summary(self):
         """
         Returns a summary of how many tasks each person has completed out of the total.
@@ -248,7 +248,7 @@ class GraphManager:
                 user=node.claimed_by
                 if user not in user_summary:
                     user_summary[user] = {"completed" : 0, "total_assigned": 0}
-                user_summary[user]["total_assigned"] += node.total        
+                user_summary[user]["total_assigned"] += node.total
                 if node.work_status == 2:
                     user_summary[user]["completed"] += node.completed
         return user_summary
@@ -361,6 +361,7 @@ class EditorManager:
                 }
                 await socketManager.direct_message(id=id, msg=json.dumps(event))
         else:
+            print("test")
             event = {
                     "event": "notification",
                     "payload": {
@@ -373,20 +374,20 @@ class EditorManager:
                                 "estimated_time_in_seconds": 1,
                                 "reasoning": "You could solve your problem faster with help from a teammate with a quick hint"
                                 },
-                                {
+                            {
                                 "task_title":"Want to request a full help from a teammate?",
                                 "stars":"3",
                                 "estimated_time_in_seconds":3,
                                 "reasoning":"You are fully stuck and need help from a teammate for whole code."
                                 },
                             {
-                                "task_title":"Don't want to request help?",  
+                                "task_title":"Don't want to request help?",
                                 "stars":"2",
                                 "estimated_time_in_seconds":5,
                                 "reasoning":"You would like to work on the problem for some time before asking for help"
                                 }
                             ],
-                            "progress":graph_manager.get_task_summary()
+                        "progress": graph_manager.get_task_summary()
                         }
                     }
             await socketManager.direct_message(id=id, msg=json.dumps(event))
@@ -792,24 +793,7 @@ async def reply_to_notif(body: ReplyBody):
     print(body.id, body.choice)
     if body.choice == "Help":
         editor_manager.help_queue.append(body.id)
-        event = {
-                "event": "notification",
-                "payload": {
-                    "context": "",
-                    "help": "helpRequest",
-                    "options": [
-                        {
-                            "title": "abc",
-                            "stars": "4",
-                            "eta": "2",
-                            "reasoning": "honk honk shoo"
-                            },
-                        ]
-                    }
-                }
-        print(editor_manager.help_queue)
-        await socketManager.direct_message(id=body.id, msg=json.dumps(event))
-
+        await editor_manager.send_notification(body.id, task="", done=False)
 
 
 @app.on_event("startup")
