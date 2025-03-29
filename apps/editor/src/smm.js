@@ -5,9 +5,12 @@ const backendServer = '127.0.0.1'
 const animalId = localStorage.getItem("id")
 const ws = new WebSocket(`wss://${backendServer}:8000/ws/${animalId}`);
 
+let answer = ""
+
 ws.addEventListener("message", (event) => {
   const data = JSON.parse(event.data)
   if (data['event'] === 'notification') {
+    console.log("hi")
     const notification = document.querySelector(".notification")
     const title = document.querySelector("#title")
     const context = document.querySelector("#context")
@@ -36,13 +39,20 @@ ws.addEventListener("message", (event) => {
         title.textContent = option["task_title"]
         upperDiv.append(title)
         button.append(upperDiv)
+        button.addEventListener("click", () => {
+          document.querySelectorAll("#options button.active").forEach(btn => btn.classList.remove("active"));
+          // Optional: if you also want to add 'active' to the clicked one
+          button.classList.add("active");
+          answer = title.textContent
+          console.log(title.textContent);
+        })
 
         const reasoning = document.createElement("p")
         reasoning.textContent = `Reasoning: ${option["reasoning"]}`
         button.append(reasoning)
 
         const challenge = document.createElement("p")
-        challenge.textContent = `Estimated Time: ${option["estimated_time_in_seconds"]}`
+        challenge.textContent = `Estimated Time: ${option["estimated_time_in_seconds"]} seconds`
         button.append(challenge)
 
         document.querySelector("#options").append(li)
@@ -88,6 +98,17 @@ ws.addEventListener("message", (event) => {
     })
   }
 })
+
+document.querySelector('#accept').addEventListener('click', acceptNotif);
+
+function acceptNotif() {
+  jumpToFunction(answer)
+  ws.send(JSON.stringify({ event: "updateNode", payload: { node: answer, id: animalId } }))
+
+  document
+    .querySelector('#notification')
+    .classList.remove('active');
+}
 
 var g = new dagreD3.graphlib.Graph()
 .setGraph({ rankdir: "TB"})
@@ -462,4 +483,8 @@ if (sliderEl) {
 
   })
 
+}
+
+function selectMe() {
+  console.log(this)
 }

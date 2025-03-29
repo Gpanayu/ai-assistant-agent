@@ -1,4 +1,5 @@
 import asyncio
+import aiohttp
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
@@ -79,7 +80,7 @@ class SocketManager:
         conns = [conn for conn in self.connections if conn.id != "control"]
         if len(conns) == 0:
             if self.countdown_task:
-                self.countdown_task.cancel()
+                self.countdown_task = False
                 print("Cancelling countdown")
 
 
@@ -94,7 +95,7 @@ class SocketManager:
 
     async def broadcast_countdown(self):
         try:
-            while self.total_seconds > 0:
+            while self.total_seconds > 0 and self.countdown_task:
                 minutes, seconds = divmod(self.total_seconds, 60)
                 event={
                     "event": "countdown",
@@ -186,7 +187,12 @@ class GraphNode:
         if self.claimed_by != "":
             if completed == remaining and remaining != 0:
                 self.work_status = 2
-                editor_manager.update_profile(self.claimed_by, self.concepts)
+                editor_manager.message_history.append(
+                        {
+                            "role": "user",
+                            "content": f"{self.name} is complete"
+                            }
+                        )
                 await editor_manager.send_notification(
                         id=self.claimed_by,
                         task=self.name,
@@ -242,13 +248,13 @@ class EditorManager:
 
         self.message_history = [
                         {
-                            "role": "user",
+                            "role": "system",
                             "content": (
-                                "Keep all response times 1 sentence long. "
+                                "Keep all responses 1 sentence long. "
                             )
                         },
                         {
-                            "role": "user",
+                            "role": "system",
                             "content": """
                             You are a task helping assistant. The project is
                             linked like a graph
@@ -271,7 +277,32 @@ class EditorManager:
                             (add_to_queue, cook_order)
                             (cook_time_helper, average_cook_time)
                             """
-                        }
+                        },
+                        {
+                            "role": "system",
+                            "content": """
+                            You are a task helping assistant. The tasks lised
+                            before also have concepts
+
+                            The tasks have concepts maps like this:
+                            (view_menu, String Interpolation + Looping)
+                            (create_order, Random num generation + Object Initiation)
+                            (clear_order, List Operations)
+                            (view_order_summary, Looping + String Interpolation)
+                            (add_to_order, Conditional Statement (If-else) + List concepts + String Interpolation)
+                            (remove_from_order, Conditional Statement (If-else) + List concepts + String Interpolation + Function Calling)
+                            (calculate_order_cost, Looping + Dictionary concepts)
+                            (get_receipt, String Interpolation + Looping)
+                            (add_to_queue, List Operations)
+                            (cook_order, List Operations + Tuple + Looping + Function calling)
+                            (restock_inventory, Conditional Statement (if-else) + String Interpolation + Dictionary concepts)
+                            (cook_time_helper, Dictionary Operations)
+                            (inventory_helper, Conditional Statements + Dictionary Operations)
+                            (average_cook_time, Looping + Function Calling)
+
+                            """
+                        },
+
         ]
 
     def update_profile(self, id, concepts):
@@ -285,7 +316,7 @@ class EditorManager:
 
     async def send_notification(self, id, task, done, time=0):
         if done:
-            response = self.generate_options_for_new_task(id, task, time)
+            response = await self.generate_options_for_new_task(id, task, time)
             if len(self.help_queue) == 0:
                 event = {
                     "event": "notification",
@@ -301,25 +332,17 @@ class EditorManager:
                 helpee = self.help_queue.pop()
                 prompt = f"Give me some context about {helpee}s code\n"
                 prompt += f"Here is their code {self.individual[helpee]}"
-                prompt += "Keep the response to 1 sentence."
-                context = self.get_ollama_response(prompt)
+                prompt += "Keep the response to 1 sentence return as response."
+                context = await self.get_ollama_response(prompt)
                 event = {
                     "event": "notification",
                     "payload": {
-                        "context": context,
+                        "context": context.get(response),
                         "help": "doneHelp",
-                        "options": [
-                            {
-                                "title": "abc",
-                                "stars": "4",
-                                "eta": "2",
-                                "reasoning": "honk honk shoo"
-                            },
-                        ]
+                        "options": json.loads(response).get('options')
                     }
                 }
                 await socketManager.direct_message(id=id, msg=json.dumps(event))
-                print(event)
         else:
             event = {
                     "event": "notification",
@@ -338,48 +361,52 @@ class EditorManager:
                     }
             await socketManager.direct_message(id=id, msg=json.dumps(event))
 
-    def get_ollama_response(self, prompt=""):
+    async def get_ollama_response(self, prompt=""):
         api_url = "http://prime-lab.cs.vt.edu:11434/api/chat"
         self.message_history.append({
             "role": "user",
             "content": prompt
-        })
-        try:
-            headers = {
-                    "Content-Type": "application/json"
-            }
-            payload = {
-                    "model": "gemma3:27b",
-                    "messages": self.message_history,
-                    "format": "json",
-                    "stream": False,
-            }
-            response = requests.post(url=api_url, data=json.dumps(payload), headers=headers)
+            })
+        headers = {
+                "Content-Type": "application/json"
+                }
+        payload = {
+                "model": "gemma3:27b",
+                "messages": self.message_history,
+                "format": "json",
+                "stream": False,
+                }
 
-            if response.status_code == 200:
-                self.message_history.append(response.json().get("message"))
-                return response.json().get("message").get("content")
-            else:
-                return {"error": f"Request failed with status code {response.status_code}", "details": response.text}
-        except requests.exceptions.RequestException as e:
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(api_url, json=payload, headers=headers) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        self.message_history.append(data.get("message"))
+                        return data.get("message").get("content")
+                    else:
+                        text = await response.text()
+                        return {"error": f"Request failed with status code {response.status}", "details": text}
+        except aiohttp.ClientError as e:
             return {"error": str(e)}
 
-    def generate_options_for_new_task(self, id: str, task: str, time: int) -> str:
+    async def generate_options_for_new_task(self, id: str, task: str, time: int) -> str:
         """
         Generates help options for the user to choose from
         """
         prompt = (f"User {id} has completed {task} in {time} seconds \n")
 
-        prompt += (f"Based on the current state of the project "
-                   f"Suggest 3 options for {id}."
+        prompt += (
+                   f"""Suggest 3 options for {id} using their concept knowledge
+                   and team progress. """
                    "Return as options "
                    "{{task_title, difficulty_stars, estimated_time_in_seconds, reasoning}}"
                    "Only return this array")
 
-        response = self.get_ollama_response(prompt=prompt)
+        response = await self.get_ollama_response(prompt=prompt)
         return response
 
-    def completeness_check(self, id):
+    async def completeness_check(self, id):
         prompt = ""
         for editor_id, state in self.individual.items():
             if editor_id == id:
@@ -400,7 +427,7 @@ class EditorManager:
                    "Return as an array {{name, completeness, explanation}}. "
                    "Only return this array")
 
-        response = self.get_ollama_response(prompt=prompt)
+        response = await self.get_ollama_response(prompt=prompt)
         return response
 
 
@@ -550,21 +577,24 @@ def dashboard(request: Request):
         "dash.html", {"request": request, "connections": socketManager.connections}
     )
 
+
 @app.get("/startTimer", response_class=HTMLResponse)
 def start_timer(request: Request, background_tasks: BackgroundTasks):
     if socketManager.countdown_task:
-        socketManager.countdown_task.cancel
-    socketManager.total_seconds=20*60
+        socketManager.countdown_task = False
+    else:
+        socketManager.countdown_task = True
+    socketManager.total_seconds = 20*60
     background_tasks.add_task(socketManager.broadcast_countdown)
 
-    return templates.TemplateResponse("index.html", {"request": request})
+    return "ok"
 
 
 @app.get("/stopTimer", response_class=HTMLResponse)
 def stop_timer(request: Request):
     if socketManager.countdown_task:
-        socketManager.countdown_task.cancel()
-    return templates.TemplateResponse("index.html", {"request": request})
+        socketManager.countdown_task = False
+    return "ok"
 
 
 @app.post("/notify")
@@ -727,11 +757,29 @@ def lookup_description(node):
 
 
 @app.post("/reply")
-def reply_to_notif(body: ReplyBody):
+async def reply_to_notif(body: ReplyBody):
     # user_response(body.id, body.choice)
     print(body.id, body.choice)
     if body.choice == "Help":
         editor_manager.help_queue.append(body.id)
+        event = {
+                "event": "notification",
+                "payload": {
+                    "context": "",
+                    "help": "helpRequest",
+                    "options": [
+                        {
+                            "title": "abc",
+                            "stars": "4",
+                            "eta": "2",
+                            "reasoning": "honk honk shoo"
+                            },
+                        ]
+                    }
+                }
+        print(editor_manager.help_queue)
+        await socketManager.direct_message(id=body.id, msg=json.dumps(event))
+
 
 
 @app.on_event("startup")
@@ -755,5 +803,5 @@ async def ollama(flex: Chat):
     #     flex.chat, flex.task, flex.time
     # )
     # response = editor_manager.completeness_check(flex.chat)
-    response = editor_manager.get_ollama_response(flex.chat)
+    response = await editor_manager.get_ollama_response(flex.chat)
     return response

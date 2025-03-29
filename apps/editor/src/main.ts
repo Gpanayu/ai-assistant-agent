@@ -68,32 +68,6 @@ ws.addEventListener('message', (event) => {
     const options = document.querySelector<HTMLSpanElement>('#options')!;
     options.innerHTML = '';
 
-    let timeleft = 20;
-    document.querySelector<HTMLProgressElement>('.round-time-bar').value =
-      timeleft;
-    document.querySelector<HTMLProgressElement>('.round-time-bar').max =
-      timeleft;
-    const downloadTimer = setInterval(function () {
-      if (timeleft == 0) {
-        document
-          .querySelector<HTMLSpanElement>('#notification')!
-          .classList.remove('active');
-        clearInterval(downloadTimer);
-
-        fetch(`https://${backendServer}:8000/reply`, {
-          method: 'POST',
-          headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ id: animalId, choice: '-1' }),
-        });
-      }
-      document.querySelector<HTMLProgressElement>('.round-time-bar').value =
-        timeleft;
-      timeleft -= 1;
-    }, 1000);
-
     for (let option of data['payload']['options']) {
       const label = document.createElement('label');
       label.textContent = option;
@@ -370,22 +344,6 @@ function helpMe() {
 
 
 function acceptNotif() {
-  const selectedOption = document.querySelector(
-    'input[name="option[]"]:checked'
-  );
-  if (selectedOption) {
-    fetch(`https://${backendServer}:8000/reply`, {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ id: animalId, choice: selectedOption.id }),
-    });
-    console.log(selectedOption.id);
-  } else {
-    console.log('No option selected');
-  }
 
   document
     .querySelector<HTMLSpanElement>('#notification')!
