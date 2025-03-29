@@ -1,6 +1,6 @@
 import {jumpToFunction} from "./main"
 
-const backendServer = '127.0.0.1'
+const backendServer = '0.0.0.0'
 // prime-lab.cs.vt.edu
 const animalId = localStorage.getItem("id")
 const ws = new WebSocket(`wss://${backendServer}:8000/ws/${animalId}`);
@@ -15,7 +15,16 @@ ws.addEventListener("message", (event) => {
     const title = document.querySelector("#title")
     const context = document.querySelector("#context")
     context.textContent = data["payload"]["context"]
-
+    const progressInitData = data["payload"]["progress"]
+    // {'AgitatedViper': {'completed': 2, 'total_assigned': 2}, 'GuiltyWhale': {'completed': 3, 'total_assigned': 3}}
+    const totalPossible=30
+    let result = {who: "Progress Contributions"}
+    for (const user in progressInitData){
+      const percentage = ((progressInitData[user].completed / totalPossible) * 100).toFixed(2);
+      result[user] = parseFloat(percentage); 
+    }
+    console.log([result])
+    updateProgress([result])
     notification.classList += " active"
     console.log(data['payload']['help'])
     if (data['payload']['help'] === "doneNoHelp") {
@@ -66,7 +75,36 @@ ws.addEventListener("message", (event) => {
     else if (data['payload']['help'] === "helpSystem") {
       const helper = document.querySelector("#for-helper")
       helper.style.display = "none"
-      title.textContent = "Check-in"
+      title.textContent = "Looks like you are stuck! Would you like to ask for help?"
+      helper.style.display = "none"
+
+      document.querySelector("#options").innerHTML = ""
+
+      for (let option of data["payload"]["options"]) {
+        console.log(option)
+        const li = document.createElement("li")
+        const button = document.createElement("button")
+        button.className = "select";
+        li.append(button)
+
+        const upperDiv = document.createElement("div")
+        upperDiv.style = "display: flex; align-items: center; justify-content: space-between; padding: 0"
+        const title = document.createElement("h4")
+        title.className = "title"
+        title.textContent = option["task_title"]
+        upperDiv.append(title)
+        button.append(upperDiv)
+
+        const reasoning = document.createElement("p")
+        reasoning.textContent = `Reasoning: ${option["reasoning"]}`
+        button.append(reasoning)
+
+        const challenge = document.createElement("p")
+        challenge.textContent = `Estimated Time: ${option["estimated_time_in_seconds"]}`
+        button.append(challenge)
+
+        document.querySelector("#options").append(li)
+      }
     }
     else if (data['payload']['help'] === "helpRequest") {
       title.textContent = "Help Request"
@@ -432,7 +470,7 @@ updatePrediction([
 ])
 
 updateProgress([
-    {who: "Progress Contributions", A: 80, B: 17, C: 3 },
+    {who: "Progress Contributions", a: 0, b: 0, c: 0 },
 ])
 
 
