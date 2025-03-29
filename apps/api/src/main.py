@@ -16,7 +16,7 @@ import io
 import ast
 from textwrap import dedent
 import csv
-from collections import ChainMap
+from collections import ChainMap, defaultdict
 import json
 import requests
 import study_problem_sol
@@ -231,6 +231,21 @@ class GraphManager:
             "payload": {"graph": dict(ChainMap(*work_statuses))},
         }
         await socketManager.broadcast(json.dumps(event))
+    
+    def get_task_summary(self):
+        """
+        Returns a summary of how many tasks each person has completed out of the total.
+        """
+        user_summary = {}
+        for node in self.graph.values():
+            if node.claimed_by != "":
+                user=node.claimed_by
+                if user not in user_summary:
+                    user_summary[user] = {"completed" : 0, "total_assigned": 0}
+                user_summary[user]["total_assigned"] += node.total        
+                if node.work_status == 2:
+                    user_summary[user]["completed"] += node.completed
+        return user_summary
 
 
 class EditorManager:
@@ -286,13 +301,15 @@ class EditorManager:
     async def send_notification(self, id, task, done, time=0):
         if done:
             response = self.generate_options_for_new_task(id, task, time)
+            res= graph_manager.get_task_summary()
             if len(self.help_queue) == 0:
                 event = {
                     "event": "notification",
                     "payload": {
                         "context": f"Great work finishing {task} here are some suggestions for next steps",
                         "help": "doneNoHelp",
-                        "options": json.loads(response).get('options')
+                        "options": json.loads(response).get('options'),
+                        "progress": res
                     }
                 }
 
@@ -315,7 +332,8 @@ class EditorManager:
                                 "eta": "2",
                                 "reasoning": "honk honk shoo"
                             },
-                        ]
+                        ],
+                        "progress": res
                     }
                 }
                 await socketManager.direct_message(id=id, msg=json.dumps(event))
@@ -328,12 +346,25 @@ class EditorManager:
                         "help": "helpSystem",
                         "options": [
                             {
-                                "title": "abc",
+                                "task_title": "Want to request a Quick hint help from a teammate?",
                                 "stars": "4",
-                                "eta": "2",
-                                "reasoning": "honk honk shoo"
+                                "estimated_time_in_seconds": 1,
+                                "reasoning": "You could solve your problem faster with help from a teammate with a quick hint"
                                 },
-                            ]
+                                {
+                                "task_title":"Want to request a full help from a teammate?",
+                                "stars":"3",
+                                "estimated_time_in_seconds":3,
+                                "reasoning":"You are fully stuck and need help from a teammate for whole code."
+                                },
+                            {
+                                "task_title":"Don't want to request help?",  
+                                "stars":"2",
+                                "estimated_time_in_seconds":5,
+                                "reasoning":"You would like to work on the problem for some time before asking for help"
+                                }
+                            ],
+                            "progress":graph_manager.get_task_summary()
                         }
                     }
             await socketManager.direct_message(id=id, msg=json.dumps(event))
