@@ -260,7 +260,7 @@ class EditorManager:
         self.individual = {}
         self.profiles = {}
         self.help_queue = []
-
+        self.HelpSummary={}
         self.message_history = [
                         {
                             "role": "system",
@@ -792,7 +792,46 @@ async def reply_to_notif(body: ReplyBody):
     if body.choice == "Help":
         if body.id not in editor_manager.help_queue:
             editor_manager.help_queue.append(body.id)
+            prompt= f"User {body.id} has requested help. Here is their code: {body.text}"
+            prompt+=f"Don't give the answer to the question but give and high level hint of where the error is and what is wrong with the code."
+            prompt+="make sure to keep the response to 1 sentence."
+            Error_Summary= await editor_manager.get_ollama_response(prompt)
+            editor_manager.HelpSummary[body.id]=Error_Summary
         print("help queu is ", editor_manager.help_queue)
+        print("help summary is ", editor_manager.HelpSummary)
+        await editor_manager.send_notification(body.id, task="", done=False)
+
+@app.post("/replyToHelp")
+async def reply_to_help(body: ReplyBody):
+    helpType=""
+    if(body.choice=="Want to request a Quick hint help from a teammate?💡"):
+        helpType="quick"
+        print(body.id, body.choice)
+    elif(body.choice=="Want to request a full help from a teammate? 🆘"):
+        helpType="full"
+        print(body.id, body.choice)
+
+    else:
+        helpType="none"
+        if body.id in editor_manager.help_queue:
+            editor_manager.help_queue.remove(body.id)
+            editor_manager.HelpSummary.pop(body.id, None)
+            print(body.id, body.choice)
+
+@app.post("/helpNotification")
+async def reply_to_notif(body: ReplyBody):
+    # user_response(body.id, body.choice)
+    print(body.id, body.choice)
+    if body.choice == "Help":
+        if body.id not in editor_manager.help_queue:
+            editor_manager.help_queue.append(body.id)
+            prompt= f"User {body.id} has requested help. Here is their code: {body.text}"
+            prompt+=f"Don't give the answer to the question but give and high level hint of where the error is and what is wrong with the code."
+            prompt+="make sure to keep the response to 1 sentence."
+            Error_Summary= await editor_manager.get_ollama_response(prompt)
+            editor_manager.HelpSummary[body.id]=Error_Summary
+        print("help queu is ", editor_manager.help_queue)
+        print("help summary is ", editor_manager.HelpSummary)
         await editor_manager.send_notification(body.id, task="", done=False)
 
 

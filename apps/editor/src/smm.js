@@ -7,6 +7,7 @@ const ws = new WebSocket(`wss://${backendServer}:8000/ws/${animalId}`);
 
 let answer = ""
 let code = false
+let HelpType=""
 
 ws.addEventListener("message", (event) => {
   const data = JSON.parse(event.data)
@@ -93,6 +94,7 @@ ws.addEventListener("message", (event) => {
           // Optional: if you also want to add 'active' to the clicked one
           button.classList.add("active");
           answer = title.textContent
+          HelpType=answer
         })
 
         const upperDiv = document.createElement("div")
@@ -103,9 +105,9 @@ ws.addEventListener("message", (event) => {
         upperDiv.append(title)
         button.append(upperDiv)
 
-        const reasoning = document.createElement("p")
-        reasoning.textContent = `Reasoning: ${option["reasoning"]}`
-        button.append(reasoning)
+        // const reasoning = document.createElement("p")
+        // reasoning.textContent = `Reasoning: ${option["reasoning"]}`
+        // button.append(reasoning)
 
         const challenge = document.createElement("p")
         challenge.textContent = `Estimated Time: ${option["estimated_time_in_seconds"]}`
@@ -140,9 +142,24 @@ ws.addEventListener("message", (event) => {
   }
 })
 
-document.querySelector('#accept').addEventListener('click', acceptNotif);
+document.querySelector('#accept').addEventListener('click', () => {
+  if (!answer) {
+    alert("Please select an option before proceeding.");
+    return;
+  }
+  acceptNotif();
+});
 
 function acceptNotif() {
+ if (HelpType !="") {
+  fetch(`https://${backendServer}:8000/replyToHelp`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({id: animalId, choice:HelpType, text: HelpType})
+    });
+ }
 
   if (code) {
     jumpToFunction(answer)

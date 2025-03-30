@@ -332,13 +332,13 @@ function clearCode() {
 }
 
 function helpMe() {
-  fetch(`https://${backendServer}:8000/reply`, {
+  fetch(`https://${backendServer}:8000/helpNotification`, {
     method: 'POST',
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ id: animalId, choice: "Help", text: "" }),
+    body: JSON.stringify({ id: animalId, choice: "Help", text: secondaryView.state.doc.toString() }),
   });
 }
 
