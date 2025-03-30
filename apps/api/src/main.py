@@ -369,13 +369,11 @@ class EditorManager:
                         "help": "helpSystem",
                         "options": [
                             {
-                                "task_title": "Want to request a Quick hint help from a teammate?",
+                                "task_title": "Want to request a Quick hint help from a teammate?💡",
                                 "stars": "4",
-                                "estimated_time_in_seconds": 1,
-                                "reasoning": "You could solve your problem faster with help from a teammate with a quick hint"
-                                },
+                                "estimated_time_in_seconds": 1,                                },
                             {
-                                "task_title":"Want to request a full help from a teammate?",
+                                "task_title":"Want to request a full help from a teammate? 🆘",
                                 "stars":"3",
                                 "estimated_time_in_seconds":3,
                                 "reasoning":"You are fully stuck and need help from a teammate for whole code."
@@ -792,7 +790,9 @@ async def reply_to_notif(body: ReplyBody):
     # user_response(body.id, body.choice)
     print(body.id, body.choice)
     if body.choice == "Help":
-        editor_manager.help_queue.append(body.id)
+        if body.id not in editor_manager.help_queue:
+            editor_manager.help_queue.append(body.id)
+        print("help queu is ", editor_manager.help_queue)
         await editor_manager.send_notification(body.id, task="", done=False)
 
 
