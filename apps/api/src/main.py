@@ -332,7 +332,7 @@ class EditorManager:
     async def send_notification(self, id, task, done, time=0):
         if done:
             response = await self.generate_options_for_new_task(id, task, time)
-            res= graph_manager.get_task_summary()
+            res = graph_manager.get_task_summary()
             if len(self.help_queue) == 0:
                 event = {
                     "event": "notification",
@@ -346,22 +346,31 @@ class EditorManager:
 
                 await socketManager.direct_message(id=id, msg=json.dumps(event))
             else:
-                helpee = self.help_queue.pop()
+                helpee = self.help_queue[0]
                 prompt = f"Give me some context about {helpee}s code\n"
                 prompt += f"Here is their code {self.individual[helpee]}"
                 prompt += "Keep the response to 1 sentence return as response."
                 context = await self.get_ollama_response(prompt)
+
+                prompt2 = f"If some were to help {helpee}\n"
+                prompt2 += """Give me an array called options formatted {time:response}
+                 with 1 sentence responses to focus a session"""
+                prompt2 += "given the lengths are 1 minute, 2 minutes, 3 minutes, 4 minutes, and 5 minutes"
+                prompt2 += ""
+
+                suggestions = await self.get_ollama_response(prompt2)
+
                 event = {
                     "event": "notification",
                     "payload": {
-                        "context": context.get(response),
+                        "context": json.loads(context).get('response'),
                         "help": "doneHelp",
-                        "options": json.loads(response).get('options')
+                        "options": json.loads(response).get('options'),
+                        "suggestions": json.loads(suggestions).get('options')
                     }
                 }
                 await socketManager.direct_message(id=id, msg=json.dumps(event))
         else:
-            print("test")
             event = {
                     "event": "notification",
                     "payload": {
@@ -428,7 +437,7 @@ class EditorManager:
         prompt += (
                    f"""Suggest 3 options for {id} using their concept knowledge
                    and team progress. """
-                   "Return as options "
+                   "Return as JSON named options "
                    "{{task_title, difficulty_stars, estimated_time_in_seconds, reasoning}}"
                    "Only return this array")
 
@@ -457,6 +466,15 @@ class EditorManager:
                    "Only return this array")
 
         response = await self.get_ollama_response(prompt=prompt)
+        return response
+
+    async def get_prediction_data(self, id: str, min: str):
+        prompt=f"User is currently chosing help his teammate {self.help_queue[0]}."
+        prompt+=f"Here is the error summary for his code{self.HelpSummary[editor_manager.help_queue[0]]}"
+        prompt+=f"Give a json Prediction resonse of format  {{prediction: 80, completed: 20}} for the cases when the user chooses to help his teammate for {min} mins."
+        prompt+="The prediction is the end goal completion of the team tasks."
+        prompt+="Give response in json format only which is given above."
+        response = await self.get_ollama_response(prompt)
         return response
 
 
@@ -801,6 +819,17 @@ async def reply_to_notif(body: ReplyBody):
         print("help summary is ", editor_manager.HelpSummary)
         await editor_manager.send_notification(body.id, task="", done=False)
 
+
+@app.post("/predictProgressinHelp")
+async def predictProgress(id: str, min: str):
+    prediction_data = await editor_manager.get_prediction_data(
+            id=editor_manager.help_queue[0], min=min
+    )
+    print(prediction_data)
+    return prediction_data
+
+
+
 @app.post("/replyToHelp")
 async def reply_to_help(body: ReplyBody):
     helpType=""
@@ -818,6 +847,7 @@ async def reply_to_help(body: ReplyBody):
             editor_manager.HelpSummary.pop(body.id, None)
             print(body.id, body.choice)
 
+
 @app.post("/helpNotification")
 async def reply_to_notif(body: ReplyBody):
     # user_response(body.id, body.choice)
@@ -830,7 +860,7 @@ async def reply_to_notif(body: ReplyBody):
             prompt+="make sure to keep the response to 1 sentence."
             Error_Summary= await editor_manager.get_ollama_response(prompt)
             editor_manager.HelpSummary[body.id]=Error_Summary
-        print("help queu is ", editor_manager.help_queue)
+        print("help queue is ", editor_manager.help_queue)
         print("help summary is ", editor_manager.HelpSummary)
         await editor_manager.send_notification(body.id, task="", done=False)
 

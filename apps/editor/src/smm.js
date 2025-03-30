@@ -8,10 +8,15 @@ const ws = new WebSocket(`wss://${backendServer}:8000/ws/${animalId}`);
 let answer = ""
 let code = false
 let HelpType=""
+let suggestions = []
 
 ws.addEventListener("message", (event) => {
   const data = JSON.parse(event.data)
   if (data['event'] === 'notification') {
+    suggestions = data["payload"]["suggestions"]
+    console.log(suggestions)
+
+    answer = ""
     const notification = document.querySelector(".notification")
     const title = document.querySelector("#title")
     const context = document.querySelector("#context")
@@ -19,10 +24,10 @@ ws.addEventListener("message", (event) => {
     const progressInitData = data["payload"]["progress"]
     // {'AgitatedViper': {'completed': 2, 'total_assigned': 2}, 'GuiltyWhale': {'completed': 3, 'total_assigned': 3}}
     const totalPossible=30
-    let result = {who: "Progress Contributions"}
+    let result = {who: "Progress Contributions in %"}
     for (const user in progressInitData){
       const percentage = ((progressInitData[user].completed / totalPossible) * 100).toFixed(2);
-      result[user] = parseFloat(percentage);
+      result[user] = progressInitData[user].completed;
     }
     console.log([result])
     updateProgress([result])
@@ -72,6 +77,40 @@ ws.addEventListener("message", (event) => {
       const helper = document.querySelector("#for-helper")
       helper.style.display = "block"
       title.textContent = "Collaborative Opportunity!"
+
+      document.querySelector("#options").innerHTML = ""
+
+      for (let option of data["payload"]["options"]) {
+        console.log(option)
+        const li = document.createElement("li")
+        const button = document.createElement("button")
+        button.className = "select";
+        li.append(button)
+
+        const upperDiv = document.createElement("div")
+        upperDiv.style = "display: flex; align-items: center; justify-content: space-between; padding: 0"
+        const title = document.createElement("h4")
+        title.className = "title"
+        title.textContent = option["task_title"]
+        upperDiv.append(title)
+        button.append(upperDiv)
+        button.addEventListener("click", () => {
+          document.querySelectorAll("#options button.active").forEach(btn => btn.classList.remove("active"));
+          // Optional: if you also want to add 'active' to the clicked one
+          button.classList.add("active");
+          answer = title.textContent
+        })
+
+        const reasoning = document.createElement("p")
+        reasoning.textContent = `Reasoning: ${option["reasoning"]}`
+        button.append(reasoning)
+
+        const challenge = document.createElement("p")
+        challenge.textContent = `Estimated Time: ${option["estimated_time_in_seconds"]} seconds`
+        button.append(challenge)
+
+        document.querySelector("#options").append(li)
+      }
     }
     else if (data['payload']['help'] === "helpSystem") {
       code = false
@@ -109,10 +148,6 @@ ws.addEventListener("message", (event) => {
         // reasoning.textContent = `Reasoning: ${option["reasoning"]}`
         // button.append(reasoning)
 
-        const challenge = document.createElement("p")
-        challenge.textContent = `Estimated Time: ${option["estimated_time_in_seconds"]}`
-        button.append(challenge)
-
         document.querySelector("#options").append(li)
       }
     }
@@ -143,7 +178,7 @@ ws.addEventListener("message", (event) => {
 })
 
 document.querySelector('#accept').addEventListener('click', () => {
-  if (!answer) {
+  if (!answer && sliderValue.textContent === "0") {
     alert("Please select an option before proceeding.");
     return;
   }
@@ -151,7 +186,7 @@ document.querySelector('#accept').addEventListener('click', () => {
 });
 
 function acceptNotif() {
- if (HelpType !="") {
+ if (HelpType !== "") {
   fetch(`https://${backendServer}:8000/replyToHelp`, {
       method: "POST",
       headers: {
@@ -166,9 +201,9 @@ function acceptNotif() {
     ws.send(JSON.stringify({ event: "updateNode", payload: { node: answer, id: animalId } }))
   }
 
-  document
-    .querySelector('#notification')
-    .classList.remove('active');
+
+  document.querySelector('#notification').classList.remove('active');
+
 }
 
 var g = new dagreD3.graphlib.Graph()
@@ -414,6 +449,10 @@ var svg2 = d3.select("#my_dataviz2")
     .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
 async function updateProgress(data) {
+
+    // Clear existing elements
+    svg2.selectAll("*").remove();
+
     // Initialize the Y axis (now categorical)
     let y = d3.scaleBand()
         .range([0, height])
@@ -440,8 +479,8 @@ async function updateProgress(data) {
     var stackedData = d3.stack().keys(subgroups)(data);
 
     // Update X axis (linear)
-    x.domain([0, 100]);
-    xAxis.transition().duration(1000).call(d3.axisBottom(x).tickValues(d3.range(0, 101, 25)));
+    x.domain([0, d3.max(stackedData[stackedData.length - 1], d => d[1])]);
+    xAxis.transition().duration(1000).call(d3.axisBottom(x).tickValues([d3.max(x.domain())]));
 
 // Bind data to groups
     var groups = svg2.selectAll(".barGroup")
@@ -489,11 +528,11 @@ async function updateProgress(data) {
 
 // Initialize plot
 updatePrediction([
-    {who: "End Goal Completion %", prediction: 80, completed: 20, },
+    {who: "End Goal Completion %", prediction: 80, completed: 4, },
 ])
 
 updateProgress([
-    {who: "Progress Contributions", a: 0, b: 0, c: 0 },
+    {who: "Progress Contributions in %", a: 0, b: 0, c: 0 },
 ])
 
 
@@ -517,9 +556,10 @@ if (sliderEl) {
       feedback.style.display = "none";
       options.style.display = "block";
       timeout = setTimeout(() => {
-        updatePrediction([
-          {who: "End Goal Completion %", prediction: 40, completed: 20, },
-        ])
+          updatePrediction([
+              {who: "End Goal Completion %", prediction: 80, completed: 4 },
+          ])
+
       }, 1000)
     }
     else {
@@ -527,10 +567,20 @@ if (sliderEl) {
       const options = document.querySelector("#options")
       feedback.style.display = "block";
       options.style.display = "none";
-      timeout = setTimeout(() => {
-        updatePrediction([
-          {who: "End Goal Completion %", prediction: 80, completed: 20, },
-        ])
+      timeout = setTimeout(async () => {
+          const data = fetch(`https://${backendServer}:8000/predictProgressinHelp?id=${animalId}&min=${+tempSliderValue}`, {
+              method: "POST",
+              headers: {
+                  "Content-Type": "application/json"
+              },
+          });
+          let json = JSON.parse(await (await data).json())
+          console.log(json, json.prediction, json.completed)
+          const focus = document.querySelector("#focus")
+          focus.textContent = suggestions[+tempSliderValue.value].response
+          updatePrediction([
+              {who: "End Goal Completion %", prediction: json.prediction, completed: json.completed, },
+          ])
       }, 1000)
 
     }

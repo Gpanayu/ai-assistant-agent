@@ -211,7 +211,6 @@ document
   .addEventListener('click', testCodePlayground);
 document.querySelector('#clear')!.addEventListener('click', clearCode);
 document.querySelector('#helpMe')!.addEventListener('click', helpMe);
-document.querySelector('#accept')!.addEventListener('click', acceptNotif);
 document.querySelector('#handle')!.addEventListener('mousedown', handle_resize);
 
 /*
@@ -342,13 +341,6 @@ function helpMe() {
   });
 }
 
-
-function acceptNotif() {
-
-  document
-    .querySelector<HTMLSpanElement>('#notification')!
-    .classList.remove('active');
-}
 
 let m_pos: number = 0;
 function resize(e) {
