@@ -300,19 +300,17 @@ class EditorManager:
                 await socketManager.direct_message(id=id, msg=json.dumps(event))
             else:
                 helpee = self.help_queue[0]
+                prompt2 = f"Here is {helpee}s code: \n {self.individual[helpee]}"
 
-                prompt2 = f"""Organize help sessions of 1 minute, 2 minutes, 3
-                minutes, 4 minutes, and 5 minutes to help {helpee}?\n"""
-                prompt2 += f"""also return to me the impact  of
-                resolving {helpee}'s problem as a percent given that
-                {graph_manager.percent_done()} of the project is complete"""
-                prompt2 += f"Return this an array called options.\n"
-
-                print(prompt2)
+                prompt2 += f"""Organize help sessions of 1 minute, 2 minutes, 3
+                minutes, 4 minutes, and 5 minutes to help {helpee} and """
+                prompt2 += f"""return to me the impact of
+                resolving {helpee}'s problem to the whole project given that
+                {graph_manager.percent_done()} of the project is complete as a
+                percentage and what to focus to solve the problem\n"""
+                prompt2 += "Return this an array called options.\n"
 
                 suggestions = await self.get_ollama_response(prompt2)
-
-                print(graph_manager.percent_done(), json.loads(suggestions).get("options"))
 
                 event = {
                     "event": "notification",
@@ -321,6 +319,7 @@ class EditorManager:
                         "help": "doneHelp",
                         "options": json.loads(response).get("options"),
                         "suggestions": json.loads(suggestions).get("options"),
+                        "percentDone": graph_manager.percent_done()
                     },
                 }
                 await socketManager.direct_message(id=id, msg=json.dumps(event))
@@ -557,6 +556,26 @@ def stop_timer(request: Request):
 @app.post("/notify")
 async def push_notification(id: str, task: str, done: bool, test: bool):
     if test:
+        editor_manager.individual["Pickles"] = """
+# Personal Playground
+# Code will not be shared with others
+from study_problem_classes import Menu, Order, Customer, Restaurant
+
+def view_menu(menu: Menu):
+    \"""
+    Display the menu items with their cost in the following format:
+
+    item | cost
+    chicken | 12.00
+
+    The first line is a header followed by each item and its corresponding cost on a new line.
+    \"""
+    for k,v in menu.dishes:
+        """
+        editor_manager.message_history.append({
+            "role": "user",
+            "content": "Pickles is working on create_order"
+        })
         editor_manager.help_queue.append("Pickles")
     else:
         editor_manager.help_queue = []

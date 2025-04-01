@@ -9,13 +9,17 @@ let answer = ""
 let code = false
 let HelpType=""
 let suggestions = []
+let complete = 0
 
 
 ws.addEventListener("message", (event) => {
   const data = JSON.parse(event.data)
   if (data['event'] === 'notification') {
     suggestions = data["payload"]["suggestions"]
-    console.log(suggestions)
+    console.table(suggestions)
+
+    complete = data["payload"]["percentDone"] * 100
+    console.log(complete)
 
     answer = ""
     const notification = document.querySelector(".notification")
@@ -95,11 +99,19 @@ ws.addEventListener("message", (event) => {
 
       helper.classList.remove("disabled")
 
+      // Initialize plot
+      updatePrediction([
+        {who: "Impact %", prediction: +suggestions[0].impact.slice(0, -1), completed: 0},
+      ])
+
 
       document.querySelector(".info").style.gridTemplateColumns ="1fr 1fr";
       document.querySelector(".info div").style = "padding: 20px; border: 1px solid black; border-radius: 5px;"
 
       title.textContent = "Collaborative Opportunity!"
+
+      const focus = document.querySelector("#focus")
+      focus.textContent = suggestions[0].focus
 
       document.querySelector("#options").innerHTML = ""
 
@@ -378,21 +390,26 @@ async function updatePrediction(data) {
     let xAxis = svg3.append("g")
         .attr("transform", "translate(0," + height + ")")
 
+  // TODO:
+  // Change response to project success?
+  // EMail peopel
+
 
     let brush = d3.brushX().extent([[0, height - y.bandwidth() - 4], [width, y.bandwidth() + 4]])
         .on("brush", brushed)
-        .on("end", brushEnded);
+        .on("end", brushEnded)
+        .handleSize(0);
 
     function brushed(event) {
         if (!event.selection) return; // Ignore if no selection
         let [x0, x1] = event.selection.map(x.invert); // Convert pixel to data
-        value = x1;
-        if (x0 !== 0) {
-            d3.select(this).call(brush.move, [0, x1]);
+        // value = x1;
+        if (x0 !== 0 || x1 !== value) {
+            d3.select(this).call(brush.move, [0, x(value)]);
         }
-        else if (x1 < completed) {
-            return
-        }
+        // else if (x1 < completed) {
+        //   return
+        // }
         svg3.select(".myPredictionValue text")
             .attr('x', x(value + 5))
             .text(d3.format('.0f')(value) + "%");
@@ -453,8 +470,8 @@ async function updatePrediction(data) {
         .data(subgroups)
         .enter()
         .append("circle")
-        .attr("cx", 206)
-        .attr("cy", function(d,i){ return 150 + i*25}) // 100 is where the first dot appears. 25 is the distance between dots
+        .attr("cx", 0)
+        .attr("cy", function(d,i){ return 80 + i*25}) // 100 is where the first dot appears. 25 is the distance between dots
         .attr("r", 7)
         .style("fill", function(d){ return color(d)})
 
@@ -463,8 +480,8 @@ async function updatePrediction(data) {
         .data(subgroups)
         .enter()
         .append("text")
-        .attr("x", 220)
-        .attr("y", function(d,i){ return 153.5 + i*25}) // 100 is where the first dot appears. 25 is the distance between dots
+        .attr("x", 10)
+        .attr("y", function(d,i){ return 83.5 + i*25}) // 100 is where the first dot appears. 25 is the distance between dots
         .style("fill", function(d){ return color(d)})
         .text(function(d){ return d})
         .attr("text-anchor", "left")
@@ -557,11 +574,6 @@ async function updateProgress(data) {
         .style("alignment-baseline", "middle")
 }
 
-// Initialize plot
-updatePrediction([
-    {who: "End Goal Completion %", prediction: 80, completed: 4, },
-])
-
 updateProgress([
     {who: "Progress Contributions in %", a: 0, b: 0, c: 0 },
 ])
@@ -572,34 +584,20 @@ const sliderValue = document.querySelector("#rangeValue")
 const spanValue = document.querySelector("#timeSpent")
 
 if (sliderEl) {
-  let timeout;
   sliderEl.addEventListener("input", (event) => {
     const tempSliderValue = event.target
     sliderValue.textContent = `${+tempSliderValue.value + 1}`;
     spanValue.textContent = sliderValue.textContent
 
 
-    clearTimeout(timeout)
-
     const feedback = document.querySelector("#feedback")
     feedback.style.display = "block";
-    timeout = setTimeout(async () => {
-      const data = fetch(`https://${backendServer}:8000/predictProgressinHelp?id=${animalId}&min=${+tempSliderValue.value}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-      });
-      let json = JSON.parse(await (await data).json())
-      console.log(json, json.prediction, json.completed)
-      const focus = document.querySelector("#focus")
-      focus.textContent = suggestions[+tempSliderValue.value].response
-      updatePrediction([
-        {who: "End Goal Completion %", prediction: json.prediction, completed: json.completed, },
-      ])
-    }, 1000)
-
-
+    const focus = document.querySelector("#focus")
+    focus.textContent = suggestions[+tempSliderValue.value].focus
+    const impact = suggestions[+tempSliderValue.value].impact.slice(0,-1)
+    updatePrediction([
+      {who: "Impact %", prediction: +impact, completed: complete },
+    ])
 
     const progress = (parseInt(tempSliderValue.value) / parseInt(sliderEl.max)) * 100
 
