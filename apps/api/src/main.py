@@ -6,9 +6,6 @@ from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from fastapi import Response
 from typing import Dict, Callable, List, Optional
-from deepgram import DeepgramClient
-from dotenv import load_dotenv
-import os
 from pydantic import BaseModel
 import subprocess
 import re
@@ -19,12 +16,9 @@ from textwrap import dedent
 import csv
 from collections import ChainMap, defaultdict
 import json
-import requests
 import study_problem_sol
 from datetime import datetime, timedelta
 from fastapi_utilities import repeat_every
-
-load_dotenv()
 
 app = FastAPI()
 
@@ -56,7 +50,7 @@ class ReplyBody(BaseModel):
 class SocketManager:
     def __init__(self):
         self.connections: list[WebSocket] = []
-        self.total_seconds=20*60
+        self.total_seconds = 20 * 60
         self.countdown_task = None
 
     async def connect(self, ws: WebSocket, id: int):
@@ -65,8 +59,6 @@ class SocketManager:
         self.connections.append(ws)
         global state
         conns = [conn for conn in self.connections if conn.id != "control"]
-
-
         if len(conns) == 1 and ws.id != "control":
             with open("study_problem_blank.py", "r") as file:
                 code = file.read()
@@ -83,7 +75,6 @@ class SocketManager:
                 self.countdown_task = False
                 print("Cancelling countdown")
 
-
     async def broadcast(self, msg: str):
         for ws in self.connections:
             await ws.send_text(msg)
@@ -97,51 +88,16 @@ class SocketManager:
         try:
             while self.total_seconds > 0 and self.countdown_task:
                 minutes, seconds = divmod(self.total_seconds, 60)
-                event={
+                event = {
                     "event": "countdown",
-                    "payload": {"minutes": minutes, "seconds": seconds
-                                }
+                    "payload": {"minutes": minutes, "seconds": seconds},
                 }
                 await self.broadcast(json.dumps(event))
                 self.total_seconds -= 1
                 await asyncio.sleep(1)
-            await self.broadcast(json.dumps({"event" : "countDownEnd"}))
+            await self.broadcast(json.dumps({"event": "countDownEnd"}))
         except asyncio.CancelledError:
-            self.broadcast(json.dumps({"event" : "timer"}))
-
-
-
-class AudioProcessor:
-    def __init__(self):
-        self.dg_client = DeepgramClient(os.getenv("DEEPGRAM_API_KEY"))
-        self.socket = None
-
-    async def process_audio(self, fast_socket: WebSocket):
-        async def get_transcript(data: Dict) -> None:
-            if "channel" in data:
-                transcript = data["channel"]["alternatives"][0]["transcript"]
-                print(data)
-                if transcript:
-                    await fast_socket.send_text(transcript)
-
-        self.socket = await self.connect_to_deepgram(get_transcript)
-
-    async def connect_to_deepgram(
-        self, transcript_received_handler: Callable[[Dict], None]
-    ):
-        try:
-            socket = await self.dg_client.transcription.live(
-                {"punctuate": True, "interim_results": False, "diarize": True}
-            )
-            socket.registerHandler(
-                socket.event.CLOSE, lambda c: print(f"Connection closed with code {c}.")
-            )
-            socket.registerHandler(
-                socket.event.TRANSCRIPT_RECEIVED, transcript_received_handler
-            )
-            return socket
-        except Exception as e:
-            raise Exception(f"Could not open socket: {e}")
+            self.broadcast(json.dumps({"event": "timer"}))
 
 
 class GraphNode:
@@ -167,19 +123,19 @@ class GraphNode:
                 self.work_status = 1
                 self.start_time = datetime.now()
                 editor_manager.message_history.append(
-                        {
-                            "role": "user",
-                            "content": f"{self.claimed_by} is working on {self.name}"
-                        }
+                    {
+                        "role": "user",
+                        "content": f"{self.claimed_by} is working on {self.name}",
+                    }
                 )
             elif self.claimed_by == id and self.work_status == 1:
                 self.claimed_by = ""
                 self.work_status = 0
                 editor_manager.message_history.append(
-                        {
-                            "role": "user",
-                            "content": f"{self.claimed_by} is not working on {self.name}"
-                        }
+                    {
+                        "role": "user",
+                        "content": f"{self.claimed_by} is not working on {self.name}",
+                    }
                 )
                 self.start_time = None
 
@@ -188,16 +144,13 @@ class GraphNode:
             if completed == remaining and remaining != 0:
                 self.work_status = 2
                 editor_manager.message_history.append(
-                        {
-                            "role": "user",
-                            "content": f"{self.name} is complete"
-                            }
-                        )
+                    {"role": "user", "content": f"{self.name} is complete"}
+                )
                 await editor_manager.send_notification(
-                        id=self.claimed_by,
-                        task=self.name,
-                        done=True,
-                        time=get_time_diff(self.start_time)
+                    id=self.claimed_by,
+                    task=self.name,
+                    done=True,
+                    time=get_time_diff(self.start_time),
                 )
             else:
                 self.work_status = 1
@@ -212,7 +165,6 @@ def get_time_diff(start_time: datetime) -> int:
 class GraphManager:
     def __init__(self):
         self.graph: Dict[str, GraphNode] = {}
-
         with open("functions.csv", newline="") as csvfile:
             reader = csv.DictReader(csvfile)
             for row in reader:
@@ -238,6 +190,13 @@ class GraphManager:
         }
         await socketManager.broadcast(json.dumps(event))
 
+    def percent_done(self):
+        nodes_done = 0
+        for node in self.graph.values():
+            if node.work_status == 2:
+                nodes_done += 1
+        return nodes_done // len(self.graph.values())
+
     def get_task_summary(self):
         """
         Returns a summary of how many tasks each person has completed out of the total.
@@ -245,9 +204,9 @@ class GraphManager:
         user_summary = {}
         for node in self.graph.values():
             if node.claimed_by != "":
-                user=node.claimed_by
+                user = node.claimed_by
                 if user not in user_summary:
-                    user_summary[user] = {"completed" : 0, "total_assigned": 0}
+                    user_summary[user] = {"completed": 0, "total_assigned": 0}
                 user_summary[user]["total_assigned"] += node.total
                 if node.work_status == 2:
                     user_summary[user]["completed"] += node.completed
@@ -260,17 +219,12 @@ class EditorManager:
         self.individual = {}
         self.profiles = {}
         self.help_queue = []
-        self.HelpSummary={}
         self.message_history = [
-                        {
-                            "role": "system",
-                            "content": (
-                                "Keep all responses 1 sentence long. "
-                            )
-                        },
-                        {
-                            "role": "system",
-                            "content": """
+            {"role": "system", "content": ("Keep all responses 1 sentence long. ")},
+            {"role": "system", "content": ("The test is 20 minutes long")},
+            {
+                "role": "system",
+                "content": """
                             You are a task helping assistant. The project is
                             linked like a graph
 
@@ -291,11 +245,11 @@ class EditorManager:
                             (cook_time_helper, cook_order)
                             (add_to_queue, cook_order)
                             (cook_time_helper, average_cook_time)
-                            """
-                        },
-                        {
-                            "role": "system",
-                            "content": """
+                            """,
+            },
+            {
+                "role": "system",
+                "content": """
                             You are a task helping assistant. The tasks lised
                             before also have concepts
 
@@ -315,9 +269,8 @@ class EditorManager:
                             (inventory_helper, Conditional Statements + Dictionary Operations)
                             (average_cook_time, Looping + Function Calling)
 
-                            """
-                        },
-
+                            """,
+            },
         ]
 
     def update_profile(self, id, concepts):
@@ -339,92 +292,86 @@ class EditorManager:
                     "payload": {
                         "context": f"Great work finishing {task} here are some suggestions for next steps",
                         "help": "doneNoHelp",
-                        "options": json.loads(response).get('options'),
-                        "progress": res
-                    }
+                        "options": json.loads(response).get("options"),
+                        "progress": res,
+                    },
                 }
 
                 await socketManager.direct_message(id=id, msg=json.dumps(event))
             else:
                 helpee = self.help_queue[0]
-                prompt = f"Give me some context about {helpee}s code\n"
-                prompt += f"Here is their code {self.individual[helpee]}"
-                prompt += "Keep the response to 1 sentence return as response."
-                context = await self.get_ollama_response(prompt)
 
-                prompt2 = f"If some were to help {helpee}\n"
-                prompt2 += """Give me an array called options formatted {time:response}
-                 with 1 sentence responses to focus a session"""
-                prompt2 += "given the lengths are 1 minute, 2 minutes, 3 minutes, 4 minutes, and 5 minutes"
-                prompt2 += ""
+                prompt2 = f"""Organize help sessions of 1 minute, 2 minutes, 3
+                minutes, 4 minutes, and 5 minutes to help {helpee}?\n"""
+                prompt2 += f"""also return to me the impact  of
+                resolving {helpee}'s problem as a percent given that
+                {graph_manager.percent_done()} of the project is complete"""
+                prompt2 += f"Return this an array called options.\n"
+
+                print(prompt2)
 
                 suggestions = await self.get_ollama_response(prompt2)
+
+                print(graph_manager.percent_done(), json.loads(suggestions).get("options"))
 
                 event = {
                     "event": "notification",
                     "payload": {
-                        "context": json.loads(context).get('response'),
+                        "context": "Help this jit",
                         "help": "doneHelp",
-                        "options": json.loads(response).get('options'),
-                        "suggestions": json.loads(suggestions).get('options')
-                    }
+                        "options": json.loads(response).get("options"),
+                        "suggestions": json.loads(suggestions).get("options"),
+                    },
                 }
                 await socketManager.direct_message(id=id, msg=json.dumps(event))
         else:
             event = {
-                    "event": "notification",
-                    "payload": {
-                        "context": "",
-                        "help": "helpSystem",
-                        "options": [
-                            {
-                                "task_title": "Want to request a Quick hint help from a teammate?💡",
-                                "stars": "4",
-                                "estimated_time_in_seconds": 1,                                },
-                            {
-                                "task_title":"Want to request a full help from a teammate? 🆘",
-                                "stars":"3",
-                                "estimated_time_in_seconds":3,
-                                "reasoning":"You are fully stuck and need help from a teammate for whole code."
-                                },
-                            {
-                                "task_title":"Don't want to request help?",
-                                "stars":"2",
-                                "estimated_time_in_seconds":5,
-                                "reasoning":"You would like to work on the problem for some time before asking for help"
-                                }
-                            ],
-                        "progress": graph_manager.get_task_summary()
+                "event": "notification",
+                "payload": {
+                    "context": "",
+                    "help": "helpSystem",
+                    "options": [
+                        {
+                            "task_title": "Want to request a Quick hint help from a teammate?💡"
+                        },
+                        {
+                            "task_title": "Want to request a full help from a teammate? 🆘",
+                        },
+                        {
+                            "task_title": "Don't want to request help?"
                         }
-                    }
+                    ],
+                    "progress": graph_manager.get_task_summary()
+                }
+            }
             await socketManager.direct_message(id=id, msg=json.dumps(event))
 
     async def get_ollama_response(self, prompt=""):
         api_url = "http://prime-lab.cs.vt.edu:11434/api/chat"
-        self.message_history.append({
-            "role": "user",
-            "content": prompt
-            })
-        headers = {
-                "Content-Type": "application/json"
-                }
+        self.message_history.append({"role": "user", "content": prompt})
+        headers = {"Content-Type": "application/json"}
         payload = {
-                "model": "gemma3:27b",
-                "messages": self.message_history,
-                "format": "json",
-                "stream": False,
-                }
+            "model": "gemma3:27b",
+            "messages": self.message_history,
+            "format": "json",
+            "stream": False,
+        }
 
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.post(api_url, json=payload, headers=headers) as response:
+                async with session.post(
+                    api_url, json=payload, headers=headers
+                ) as response:
                     if response.status == 200:
                         data = await response.json()
                         self.message_history.append(data.get("message"))
                         return data.get("message").get("content")
                     else:
                         text = await response.text()
-                        return {"error": f"Request failed with status code {response.status}", "details": text}
+                        return {
+                            "error": f"Request failed with status code {response.status}",
+                            "details": text,
+                        }
         except aiohttp.ClientError as e:
             return {"error": str(e)}
 
@@ -432,48 +379,24 @@ class EditorManager:
         """
         Generates help options for the user to choose from
         """
-        prompt = (f"User {id} has completed {task} in {time} seconds \n")
+        prompt = f"User {id} has completed {task} in {time} seconds \n"
 
         prompt += (
-                   f"""Suggest 3 options for {id} using their concept knowledge
+            f"""Suggest 3 options for {id} using their concept knowledge
                    and team progress. """
-                   "Return as JSON named options "
-                   "{{task_title, difficulty_stars, estimated_time_in_seconds, reasoning}}"
-                   "Only return this array")
-
-        response = await self.get_ollama_response(prompt=prompt)
-        return response
-
-    async def completeness_check(self, id):
-        prompt = ""
-        for editor_id, state in self.individual.items():
-            if editor_id == id:
-                continue
-            prompt += f"User {editor_id} has code: \n {state}\n"
-            try:
-                parsed_code = ast.parse(dedent(state))
-                for node in parsed_code.body:
-                    if isinstance(node, ast.FunctionDef):
-                        function_name = node.name
-                        if hasattr(study_problem_sol, function_name):
-                            solution_function = getattr(study_problem_sol, function_name)
-                            prompt += f"The doc string for the function {function_name} is: {solution_function.__doc__}\n"
-            except Exception as e:
-                prompt += f"Error parsing code: {e}\n"
-
-        prompt += ("How close is each user to finishing their task?\n"
-                   "Return as an array {{name, completeness, explanation}}. "
-                   "Only return this array")
+            "Return as JSON named options "
+            "{{task_title, difficulty_stars, estimated_time_in_seconds, reasoning}}"
+            "Only return this array"
+        )
 
         response = await self.get_ollama_response(prompt=prompt)
         return response
 
     async def get_prediction_data(self, id: str, min: str):
-        prompt=f"User is currently chosing help his teammate {self.help_queue[0]}."
-        prompt+=f"Here is the error summary for his code{self.HelpSummary[editor_manager.help_queue[0]]}"
-        prompt+=f"Give a json Prediction resonse of format  {{prediction: 80, completed: 20}} for the cases when the user chooses to help his teammate for {min} mins."
-        prompt+="The prediction is the end goal completion of the team tasks."
-        prompt+="Give response in json format only which is given above."
+        prompt = f"User {id} is trying to help his teammate {self.help_queue[0]}."
+        prompt += f"Give a json Prediction response of format  {{prediction: 80, completed: 20}} for {min} mins."
+        prompt += "The prediction is the end goal completion of the team tasks."
+        prompt += "Give response in json format only which is given above."
         response = await self.get_ollama_response(prompt)
         return response
 
@@ -559,12 +482,15 @@ class FunctionReplacer:
             )
 
             if not self.test_full:
-                match = re.search(r"=+ (\d+) passed.*(?:, (\d+) failed)?",
-                                  result.stdout)
+                match = re.search(
+                    r"=+ (\d+) passed.*(?:, (\d+) failed)?", result.stdout
+                )
                 passed = int(match.group(1)) if match else 0
 
-                selected_match = re.search(r"collected (\d+) items / (\d+) deselected / (\d+) selected",
-                                           result.stdout)
+                selected_match = re.search(
+                    r"collected (\d+) items / (\d+) deselected / (\d+) selected",
+                    result.stdout,
+                )
                 total_selected = int(selected_match.group(3)) if selected_match else 0
 
                 await graph_manager.update_completed(
@@ -587,7 +513,6 @@ class FunctionReplacer:
 socketManager = SocketManager()
 
 templates = Jinja2Templates(directory="templates")
-audio_processor = AudioProcessor()
 
 graph_manager = GraphManager()
 
@@ -596,21 +521,6 @@ editor_manager = EditorManager()
 msgs = []
 state = ""
 cursor_positions = {}
-
-
-@app.websocket("/listen")
-async def websocket_listen_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    try:
-        await audio_processor.process_audio(websocket)
-        while True:
-            data = await websocket.receive_bytes()
-            if audio_processor.socket:
-                audio_processor.socket.send(data)
-    except Exception as e:
-        raise Exception(f"Could not process audio: {e}")
-    finally:
-        await websocket.close()
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -631,7 +541,7 @@ def start_timer(request: Request, background_tasks: BackgroundTasks):
         socketManager.countdown_task = False
     else:
         socketManager.countdown_task = True
-    socketManager.total_seconds = 20*60
+    socketManager.total_seconds = 20 * 60
     background_tasks.add_task(socketManager.broadcast_countdown)
 
     return "ok"
@@ -662,7 +572,7 @@ async def testFunction(rawCode: InputBody):
         replacer = FunctionReplacer("study_problem_tester.py", "study_problem_sol.py")
         replacer.replace_whole_file(rawCode.code)
         await replacer.run_tests(rawCode.channel)
-        replacer.restore_main_file
+        replacer.restore_main_file()
 
     else:
         replacer = FunctionReplacer("study_problem_tester.py", "study_problem_sol.py")
@@ -810,38 +720,24 @@ async def reply_to_notif(body: ReplyBody):
     if body.choice == "Help":
         if body.id not in editor_manager.help_queue:
             editor_manager.help_queue.append(body.id)
-            prompt= f"User {body.id} has requested help. Here is their code: {body.text}"
-            prompt+=f"Don't give the answer to the question but give and high level hint of where the error is and what is wrong with the code."
-            prompt+="make sure to keep the response to 1 sentence."
-            Error_Summary= await editor_manager.get_ollama_response(prompt)
-            editor_manager.HelpSummary[body.id]=Error_Summary
         print("help queu is ", editor_manager.help_queue)
         print("help summary is ", editor_manager.HelpSummary)
         await editor_manager.send_notification(body.id, task="", done=False)
 
 
-@app.post("/predictProgressinHelp")
-async def predictProgress(id: str, min: str):
-    prediction_data = await editor_manager.get_prediction_data(
-            id=editor_manager.help_queue[0], min=min
-    )
-    print(prediction_data)
-    return prediction_data
-
-
 
 @app.post("/replyToHelp")
 async def reply_to_help(body: ReplyBody):
-    helpType=""
-    if(body.choice=="Want to request a Quick hint help from a teammate?💡"):
-        helpType="quick"
+    helpType = ""
+    if body.choice == "Want to request a Quick hint help from a teammate?💡":
+        helpType = "quick"
         print(body.id, body.choice)
-    elif(body.choice=="Want to request a full help from a teammate? 🆘"):
-        helpType="full"
+    elif body.choice == "Want to request a full help from a teammate? 🆘":
+        helpType = "full"
         print(body.id, body.choice)
 
     else:
-        helpType="none"
+        helpType = "none"
         if body.id in editor_manager.help_queue:
             editor_manager.help_queue.remove(body.id)
             editor_manager.HelpSummary.pop(body.id, None)
@@ -855,13 +751,7 @@ async def reply_to_notif(body: ReplyBody):
     if body.choice == "Help":
         if body.id not in editor_manager.help_queue:
             editor_manager.help_queue.append(body.id)
-            prompt= f"User {body.id} has requested help. Here is their code: {body.text}"
-            prompt+=f"Don't give the answer to the question but give and high level hint of where the error is and what is wrong with the code."
-            prompt+="make sure to keep the response to 1 sentence."
-            Error_Summary= await editor_manager.get_ollama_response(prompt)
-            editor_manager.HelpSummary[body.id]=Error_Summary
         print("help queue is ", editor_manager.help_queue)
-        print("help summary is ", editor_manager.HelpSummary)
         await editor_manager.send_notification(body.id, task="", done=False)
 
 

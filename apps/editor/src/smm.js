@@ -10,6 +10,7 @@ let code = false
 let HelpType=""
 let suggestions = []
 
+
 ws.addEventListener("message", (event) => {
   const data = JSON.parse(event.data)
   if (data['event'] === 'notification') {
@@ -33,10 +34,15 @@ ws.addEventListener("message", (event) => {
     updateProgress([result])
     notification.classList += " active"
     console.log(data['payload']['help'])
+
+    document.querySelector(".info").style.gridTemplateColumns ="1fr";
+    document.querySelector(".info div").style = ""
+
+    const helper = document.querySelector("#for-helper")
+    helper.classList.add("disabled")
+
     if (data['payload']['help'] === "doneNoHelp") {
       code = true
-      const helper = document.querySelector("#for-helper")
-      helper.style.display = "none"
       title.textContent = "Task Complete!"
 
       document.querySelector("#options").innerHTML = ""
@@ -53,14 +59,26 @@ ws.addEventListener("message", (event) => {
         const title = document.createElement("h4")
         title.className = "title"
         title.textContent = option["task_title"]
+        const info = document.createElement("i")
+        info.className = "fa-info-circle fa-solid"
+
+        info.addEventListener("mouseover", () => {
+          tippy(info, {
+            content: option["reasoning"],
+          });
+        })
         upperDiv.append(title)
+        upperDiv.append(info)
         button.append(upperDiv)
+
+
         button.addEventListener("click", () => {
           document.querySelectorAll("#options button.active").forEach(btn => btn.classList.remove("active"));
           // Optional: if you also want to add 'active' to the clicked one
           button.classList.add("active");
           answer = title.textContent
         })
+
 
         const reasoning = document.createElement("p")
         reasoning.textContent = `Reasoning: ${option["reasoning"]}`
@@ -74,8 +92,13 @@ ws.addEventListener("message", (event) => {
       }
     }
     else if (data['payload']['help'] === "doneHelp"){
-      const helper = document.querySelector("#for-helper")
-      helper.style.display = "block"
+
+      helper.classList.remove("disabled")
+
+
+      document.querySelector(".info").style.gridTemplateColumns ="1fr 1fr";
+      document.querySelector(".info div").style = "padding: 20px; border: 1px solid black; border-radius: 5px;"
+
       title.textContent = "Collaborative Opportunity!"
 
       document.querySelector("#options").innerHTML = ""
@@ -89,10 +112,22 @@ ws.addEventListener("message", (event) => {
 
         const upperDiv = document.createElement("div")
         upperDiv.style = "display: flex; align-items: center; justify-content: space-between; padding: 0"
+
+        const info = document.createElement("i")
+        info.className = "fa-info-circle fa-solid"
+        info.style.zIndex = 4
+
+        info.addEventListener("mouseover",() => {
+          tippy(info, {
+            content: option["reasoning"],
+          });
+        })
+
         const title = document.createElement("h4")
         title.className = "title"
         title.textContent = option["task_title"]
         upperDiv.append(title)
+        upperDiv.append(info)
         button.append(upperDiv)
         button.addEventListener("click", () => {
           document.querySelectorAll("#options button.active").forEach(btn => btn.classList.remove("active"));
@@ -114,10 +149,7 @@ ws.addEventListener("message", (event) => {
     }
     else if (data['payload']['help'] === "helpSystem") {
       code = false
-      const helper = document.querySelector("#for-helper")
-      helper.style.display = "none"
       title.textContent = "Looks like you are stuck! Would you like to ask for help?"
-      helper.style.display = "none"
 
       document.querySelector("#options").innerHTML = ""
 
@@ -178,7 +210,8 @@ ws.addEventListener("message", (event) => {
 })
 
 document.querySelector('#accept').addEventListener('click', () => {
-  if (!answer && sliderValue.textContent === "0") {
+  console.log(answer)
+  if (answer === "") {
     alert("Please select an option before proceeding.");
     return;
   }
@@ -186,24 +219,22 @@ document.querySelector('#accept').addEventListener('click', () => {
 });
 
 function acceptNotif() {
- if (HelpType !== "") {
-  fetch(`https://${backendServer}:8000/replyToHelp`, {
+  if (HelpType !== "") {
+    fetch(`https://${backendServer}:8000/replyToHelp`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({id: animalId, choice:HelpType, text: HelpType})
     });
- }
+  }
 
   if (code) {
     jumpToFunction(answer)
     ws.send(JSON.stringify({ event: "updateNode", payload: { node: answer, id: animalId } }))
   }
 
-
   document.querySelector('#notification').classList.remove('active');
-
 }
 
 var g = new dagreD3.graphlib.Graph()
@@ -315,9 +346,9 @@ svgGroup.selectAll(".node").on("mouseover", async function (event, nodeId) {
 
 
 // set the dimensions and margins of the graph
-var margin = {top: 30, right: 0, bottom: 70, left: 200},
+var margin = {top: 30, right: 20, bottom: 70, left: 100},
     width = 480 - margin.left - margin.right,
-    height = 200 - margin.top - margin.bottom;
+    height = 150 - margin.top - margin.bottom;
 
 // Append the SVG object to the body of the page
 var svg3 = d3.select("#my_dataviz")
@@ -544,58 +575,41 @@ if (sliderEl) {
   let timeout;
   sliderEl.addEventListener("input", (event) => {
     const tempSliderValue = event.target
-    sliderValue.textContent = `${tempSliderValue.value} minutes`;
+    sliderValue.textContent = `${+tempSliderValue.value + 1}`;
     spanValue.textContent = sliderValue.textContent
 
 
     clearTimeout(timeout)
 
-    if (+tempSliderValue.value === 0) {
-      const feedback = document.querySelector("#feedback")
-      const options = document.querySelector("#options")
-      feedback.style.display = "none";
-      options.style.display = "block";
-      timeout = setTimeout(() => {
-          updatePrediction([
-              {who: "End Goal Completion %", prediction: 80, completed: 4 },
-          ])
+    const feedback = document.querySelector("#feedback")
+    feedback.style.display = "block";
+    timeout = setTimeout(async () => {
+      const data = fetch(`https://${backendServer}:8000/predictProgressinHelp?id=${animalId}&min=${+tempSliderValue.value}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+      });
+      let json = JSON.parse(await (await data).json())
+      console.log(json, json.prediction, json.completed)
+      const focus = document.querySelector("#focus")
+      focus.textContent = suggestions[+tempSliderValue.value].response
+      updatePrediction([
+        {who: "End Goal Completion %", prediction: json.prediction, completed: json.completed, },
+      ])
+    }, 1000)
 
-      }, 1000)
-    }
-    else {
-      const feedback = document.querySelector("#feedback")
-      const options = document.querySelector("#options")
-      feedback.style.display = "block";
-      options.style.display = "none";
-      timeout = setTimeout(async () => {
-          const data = fetch(`https://${backendServer}:8000/predictProgressinHelp?id=${animalId}&min=${+tempSliderValue}`, {
-              method: "POST",
-              headers: {
-                  "Content-Type": "application/json"
-              },
-          });
-          let json = JSON.parse(await (await data).json())
-          console.log(json, json.prediction, json.completed)
-          const focus = document.querySelector("#focus")
-          focus.textContent = suggestions[+tempSliderValue.value].response
-          updatePrediction([
-              {who: "End Goal Completion %", prediction: json.prediction, completed: json.completed, },
-          ])
-      }, 1000)
 
-    }
 
     const progress = (parseInt(tempSliderValue.value) / parseInt(sliderEl.max)) * 100
+
 
     sliderEl.style.background = `linear-gradient(to right, lightblue ${progress}%, #ccc ${progress}%)`;
 
     const left = (((+sliderEl.value - +sliderEl.min) / (+sliderEl.max - +sliderEl.min)) * ((sliderValue.clientWidth - 8) - 8)) + 4;
-    sliderValue.style.left = `calc(${left}px - 30px)`;
+    sliderValue.style.left = `calc(${left}px)`;
 
   })
 
 }
 
-function selectMe() {
-  console.log(this)
-}

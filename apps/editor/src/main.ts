@@ -59,28 +59,6 @@ ws.addEventListener('message', (event) => {
   if (data['event'] === 'countdownFinished') {
     alert("The countdown has finished!");
   }
-  if (data['event'] === 'notification') {
-    document
-      .querySelector<HTMLSpanElement>('#notification')!
-      .classList.add('active');
-    document.querySelector<HTMLSpanElement>('#content')!.innerText =
-      data['payload']['prompt'];
-    const options = document.querySelector<HTMLSpanElement>('#options')!;
-    options.innerHTML = '';
-
-    for (let option of data['payload']['options']) {
-      const label = document.createElement('label');
-      label.textContent = option;
-      const opt = document.createElement('input');
-      opt.type = 'radio';
-      opt.id = option;
-      opt.name = 'option[]';
-      label.prepend(opt);
-      options.append(label);
-      const br = document.createElement('br');
-      options.append(br);
-    }
-  }
 });
 
 

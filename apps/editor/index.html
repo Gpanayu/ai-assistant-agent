@@ -117,63 +117,62 @@
         </div>
       </div>
       <div class="notification-bg" />
-      <div id="notification" class="notification">
-        <div class="padding">
+        <div id="notification" class="notification">
           <h1 id="title">Hey!</h1>
-          <p id="context">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
-          eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad
-          minim veniam, quis nostrud exercitation ullamco laboris nisi ut
-          aliquip ex ea commodo consequat. </p>
-          <div id="for-helper">
-            <div class="info">
-              <h3 class="help-question">How much time are you willing to spend helping?</h2>
+          <div class="info">
+              <div>
+                <h3 id="selection">Next Task Suggestion</h3>
+                <ul id="options"></ul>
+                <button id="accept">Submit</button>
+            </div>
+
+            <div id="for-helper" class="disabled">
+              <h3>Help Teammate</h3>
+              <p id="context">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
+              eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad
+              minim veniam, quis nostrud exercitation ullamco laboris nisi ut
+              aliquip ex ea commodo consequat. </p>
+              <h3 class="help-question">Estimated Time Allocation </h2>
               <div class="slider-container">
                 <div class="slider-values">
-                  <p>Pick A New Task</p>
                   <div class="slider-wrapper">
-                    <div class="selected-value" id="rangeValue">0 minutes</div>
+                    <div class="selected-value" id="rangeValue">1</div>
                     <input
                         type="range"
                         min="0"
-                        max="5"
+                        max="4"
                         value="0"
                         step="1"
                         class="custom-slider"
                         id="rangeSlider"
                         autocomplete="off"
                         >
-                        <div class="step-markers">
-                          <div class="step-marker"></div>
-                          <div class="step-marker"></div>
-                          <div class="step-marker"></div>
-                          <div class="step-marker"></div>
-                          <div class="step-marker"></div>
+                        <div style="display: flex; justify-content:
+                          space-between; font-size: 12px">
+                          <span>1 min</span>
+                          <span>2 min</span>
+                          <span>3 min</span>
+                          <span>4 min</span>
+                          <span>5 min</span>
                         </div>
                   </div>
-                  <p>5 Minute Help Session</p>
                 </div>
               </div>
-            </div>
-          </div>
-            <div class="info">
-              <div>
-                <h4>Suggestions</h4>
-                <p id="feedback"><b>Given that you want to spend <span
-                   id="timeSpent">0</span>
-                  helping:</b>
-                <span id="focus">
+
+              <div id="my_dataviz" height="200" width="400"></div>
+
+              <p id="feedback"><b>If you want to spend <span
+                 id="timeSpent">1 minute</span>
+                helping focus on this:</b>
+              <span id="focus">
                 Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
                 eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim
                 ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut
                 aliquip ex ea commodo consequat.</span></p>
-                <ul id="options"></ul>
-              </div>
-              <div>
-                <div class="data-viz" id="my_dataviz"></div>
-                <div class="data-viz" id="my_dataviz2"></div>
-              </div>
+
+              <button id="startSession">Move Over (Physically) and Help</button>
+
             </div>
-            <button id="accept">Submit</button>
           </div>
     </main>
     <script>
