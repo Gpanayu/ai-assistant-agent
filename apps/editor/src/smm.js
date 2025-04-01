@@ -84,9 +84,6 @@ ws.addEventListener("message", (event) => {
         })
 
 
-        const reasoning = document.createElement("p")
-        reasoning.textContent = `Reasoning: ${option["reasoning"]}`
-        button.append(reasoning)
 
         const challenge = document.createElement("p")
         challenge.textContent = `Estimated Time: ${option["estimated_time_in_seconds"]} seconds`

@@ -331,13 +331,13 @@ class EditorManager:
                     "help": "helpSystem",
                     "options": [
                         {
-                            "task_title": "Want to request a Quick hint help from a teammate?💡"
+                            "task_title": "Quick Help 💡"
                         },
                         {
-                            "task_title": "Want to request a full help from a teammate? 🆘",
+                            "task_title": "I am fully stuck 🆘",
                         },
                         {
-                            "task_title": "Don't want to request help?"
+                            "task_title": "No Help 🚫"
                         }
                     ],
                     "progress": graph_manager.get_task_summary()
@@ -740,7 +740,6 @@ async def reply_to_notif(body: ReplyBody):
         if body.id not in editor_manager.help_queue:
             editor_manager.help_queue.append(body.id)
         print("help queu is ", editor_manager.help_queue)
-        print("help summary is ", editor_manager.HelpSummary)
         await editor_manager.send_notification(body.id, task="", done=False)
 
 
@@ -748,10 +747,10 @@ async def reply_to_notif(body: ReplyBody):
 @app.post("/replyToHelp")
 async def reply_to_help(body: ReplyBody):
     helpType = ""
-    if body.choice == "Want to request a Quick hint help from a teammate?💡":
+    if body.choice == "Quick Help 💡":
         helpType = "quick"
         print(body.id, body.choice)
-    elif body.choice == "Want to request a full help from a teammate? 🆘":
+    elif body.choice == "I am fully stuck 🆘":
         helpType = "full"
         print(body.id, body.choice)
 
@@ -759,7 +758,6 @@ async def reply_to_help(body: ReplyBody):
         helpType = "none"
         if body.id in editor_manager.help_queue:
             editor_manager.help_queue.remove(body.id)
-            editor_manager.HelpSummary.pop(body.id, None)
             print(body.id, body.choice)
 
 
