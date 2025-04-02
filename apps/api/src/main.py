@@ -552,6 +552,27 @@ def stop_timer(request: Request):
         socketManager.countdown_task = False
     return "ok"
 
+@app.post("/StartHelpSession")
+async def start_help_session(helpee: str, helper: str, time: int,hint: str="this is hint"):
+    connected_ids = {conn.id for conn in socketManager.connections if conn.id != "control"}
+
+    if helpee in connected_ids and helper in connected_ids:
+        event = {
+            "event": "StartHelpSession",
+            "payload": {
+                "helpee": helpee,
+                "helper": helper,
+                "time": time,
+                "hint": hint,
+            }
+        }
+        await socketManager.broadcast(json.dumps(event))
+        print("Starting help session between helpee ", helpee, "and helper ", helper)
+        print(event)
+        return {"status": "success"}
+    else:
+        return {"status": "failure", "message": "One or both users not connected"}
+
 
 @app.post("/notify")
 async def push_notification(id: str, task: str, done: bool, test: bool):

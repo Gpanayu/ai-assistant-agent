@@ -59,6 +59,14 @@ ws.addEventListener('message', (event) => {
   if (data['event'] === 'countdownFinished') {
     alert("The countdown has finished!");
   }
+  if (data['event'] === 'StartHelpSession') {
+    if (data['payload']['helpee'] === animalId ) {
+      showNotificationHelpee(data['payload']['time'] || 3000,data['payload']['helper']);
+    } else if (data['payload']['helper'] === animalId) {
+      showNotificationHelper( data['payload']['hint'], data['payload']['time'] || 3000, data['payload']['helpee'] );
+    }
+  }
+
 });
 
 
@@ -378,6 +386,68 @@ document.addEventListener(
 //   })
 // }
 //
+
+function showNotificationHelper( hint,duration = 3000, helpee) {
+  const notification = document.createElement("div");
+  notification.classList.add("popup-notification");
+  
+  const messageElement = document.createElement("p");
+  messageElement.innerText = "Please go over to " + helpee+" and help them!";
+  const hintElement = document.createElement("small");
+  hintElement.innerText = `Hint: ${hint}`;
+  hintElement.style.display = "block";
+  hintElement.style.opacity = "0.8";
+
+  const countdownElement = document.createElement("span");
+  countdownElement.innerText = ` (${duration / 1000}s)`;
+  
+  notification.appendChild(messageElement);
+  notification.appendChild(hintElement);
+  notification.appendChild(countdownElement);
+  document.body.appendChild(notification);
+
+  let timeLeft = duration / 1000;
+  const interval = setInterval(() => {
+    timeLeft--;
+    countdownElement.innerText = ` (${timeLeft}s)`;
+    if (timeLeft <= 0) clearInterval(interval);
+  }, 1000);
+
+  setTimeout(() => {
+    notification.style.opacity = "0";
+    setTimeout(() => notification.remove(), 500);
+  }, duration);
+}
+//still needs to be completed
+function showNotificationHelpee(duration = 3000, helper) {
+  const notification = document.createElement("div");
+  notification.classList.add("popup-notification");
+  const messageElement = document.createElement("p");
+  messageElement.innerText = "Please go over to  " + helper+" and try to solve the problems you are encountering!";
+  const hintElement = document.createElement("small");
+  hintElement.style.display = "block";
+  hintElement.style.opacity = "0.8";
+
+  const countdownElement = document.createElement("span");
+  countdownElement.innerText = ` (${duration / 1000}s)`;
+  
+  notification.appendChild(messageElement);
+  notification.appendChild(hintElement);
+  notification.appendChild(countdownElement);
+  document.body.appendChild(notification);
+
+  let timeLeft = duration / 1000;
+  const interval = setInterval(() => {
+    timeLeft--;
+    countdownElement.innerText = ` (${timeLeft}s)`;
+    if (timeLeft <= 0) clearInterval(interval);
+  }, 1000);
+
+  setTimeout(() => {
+    notification.style.opacity = "0";
+    setTimeout(() => notification.remove(), 500);
+  }, duration);
+}
 
 
 export function jumpToFunction(functionName: string) {
