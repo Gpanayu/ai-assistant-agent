@@ -576,8 +576,7 @@ async def start_help_session(
     connected_ids = {
         conn.id for conn in socketManager.connections if conn.id != "control"
     }
-
-    helpee = editor_manager.help_queue.pop()
+    helpee = editor_manager.help_queue[0]
 
     if helpee in connected_ids and helper in connected_ids:
         event = {
@@ -592,7 +591,9 @@ async def start_help_session(
         await socketManager.broadcast(json.dumps(event))
         print("Starting help session between helpee ", helpee, "and helper ", helper)
         print(event)
+        editor_manager.help_queue.pop()
         return {"status": "success"}
+        
     else:
         return {"status": "failure", "message": "One or both users not connected"}
 
