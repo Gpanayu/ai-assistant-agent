@@ -1,188 +1,82 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <script
-      src="https://kit.fontawesome.com/3efd7c2f05.js"
-      crossorigin="anonymous"
-    ></script>
-    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/dagre-d3/0.6.4/dagre-d3.min.js"></script>
-    <title>Acme</title>
-
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <title>Intro</title>
     <style>
-      .custom-edge {
-        stroke: red;
-        stroke-width: 2px;
-        fill: none;
-        stroke-dasharray: 5;
-      }
-      .node rect {
-        stroke: #999;
-        fill: #fff;
-        rx: 4;
-        ry: 4;
-        cursor: pointer;
-        transition: fill 0.3s ease;
-      }
-      .node.checked1 rect {
-        fill: #ffff66;
-        stroke: #9ea30d;
-      }
-      .node.checked2 rect {
-        fill: #a3e635;
-        stroke: #65a30d;
-      }
-      .edgePath path {
-        stroke: #999;
-        fill: none;
-        stroke-width: 1.5px;
-      }
-      text {
-        font-family: sans-serif;
-        font-size: 14px;
-        pointer-events: none;
-      }
-      svg {
-        width: 100%;
+      body {
+        font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+        line-height: 1.5;
+        margin: 0;
+        padding: 0;
         height: 100vh;
+        display: grid;
+        place-items: center;
+      }
+
+      .container {
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .container > span {
+        border: 1px solid black;
+        border-radius: 2px;
+        padding: 20px 25px 20px 25px;
+      }
+
+      .container > span:hover {
+        background-color: whitesmoke;
+      }
+
+      .container > span.active {
+        background-color: lightcyan;
+      }
+
+      .submit {
+        margin-top: 10px;
+        padding: 5px;
+      }
+
+      .observe {
+        position: absolute;
+        top: 0;
+        right: 0;
+        margin: 5px;
       }
     </style>
+
   </head>
   <body>
-    <div class="topContainer">
-      <span>
-        <span class="countdown font-mono text-2xl">
-          <span id="minutes" aria-live="polite" aria-label="24">20</span>
-          m
-          <span id="seconds" aria-live="polite" aria-label="59">59</span>
-          s
-        </span>
-      </span>
-      <section class="buttons">
-        <span id="id">id:</span>
-        <button class="button-tab" id="clear">
-          <i class="fa-solid fa-broom"></i>
-          Clear Output
-        </button>
-        <button class="button-tab" id="helpMe">
-          <i class="fa-solid fa-flag"></i>
-          Flag For Help
-        </button>
-      </section>
-    </div>
-    <div class="tabs-container">
-      <ul class="tabs">
-        <h3>Collaborative Editor</h3>
-        <section class="buttons">
-          <button class="button-tab" id="run-collab">
-            <i class="fa-solid fa-play"></i>
-            Run
-          </button>
-          <button class="button-tab" id="test-collab">
-            <i id="test-collab-icon" class="fa-solid fa-flask"></i>
-            Test
-          </button>
-        </section>
-      </ul>
-      <ul class="tabs">
-        <h3>Personal Playground</h3>
-        <section class="buttons">
-          <button class="button-tab" id="run-playground">
-            <i  class="fa-solid fa-play"></i>
-            Run
-          </button>
-          <button class="button-tab" id="test-playground">
-            <i id="test-playground-icon" class="fa-solid fa-flask"></i>
-            Test
-          </button>
-        </section>
-      </ul>
-    </div>
-    <div class="test"></div>
-    <main id="editorContainer">
-      <div id="editor" class="editor" data-pane="0"></div>
-      <div id="secondary" class="editor" data-pane="1"></div>
-      <div id="split" class="split-h">
-        <div id="handle" class="handle"></div>
-
-        <div class="output-container">
-          <h3>Console Output</h3>
-          <div id="output"></div>
-        </div>
-        <div class="output-container">
-          <h3>Task Progress</h3>
-          <svg id="smm"></svg>
-        </div>
+    <div x-data="form">
+      <h1>Welcome To The Study</h1>
+      <p>Which participant are you?</p>
+      <div class="container">
+        <span @click="selected = 'A'" :class="selected === 'A' ? 'active' : ''">A</span>
+        <span @click="selected = 'B'" :class="selected === 'B' ? 'active' : ''">B</span>
+        <span @click="selected = 'C'" :class="selected === 'C' ? 'active' : ''">C</span>
       </div>
-      <div class="notification-bg" />
-        <div id="notification" class="notification">
-          <h1 id="title">Hey!</h1>
-          <div class="info">
-              <div>
-                <h3 id="selection">Next Task Suggestion</h3>
-                <i>Select a task by clicking the box</i>
-                <ul id="options"></ul>
-                <button id="accept">Start Now</button>
-            </div>
 
-            <div id="for-helper" class="disabled">
-              <h3>Help Teammate</h3>
-              <p id="context">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
-              eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad
-              minim veniam, quis nostrud exercitation ullamco laboris nisi ut
-              aliquip ex ea commodo consequat. </p>
-              <h3 class="help-question">Estimated Time Allocation </h2>
-              <div class="slider-container">
-                <div class="slider-values">
-                  <div class="slider-wrapper">
-                    <div class="selected-value" id="rangeValue">1</div>
-                    <input
-                        type="range"
-                        min="0"
-                        max="4"
-                        value="0"
-                        step="1"
-                        class="custom-slider"
-                        id="rangeSlider"
-                        autocomplete="off"
-                        >
-                        <div style="display: flex; justify-content:
-                          space-between; font-size: 12px">
-                          <span>1 min</span>
-                          <span>2 min</span>
-                          <span>3 min</span>
-                          <span>4 min</span>
-                          <span>5 min</span>
-                        </div>
-                  </div>
-                </div>
-              </div>
+      <button @click="save" class="submit">Submit</button>
+      <button @click="selected = 'O'" class="observe">
+        Observer
+      </button>
+    </div>
 
-              <div id="my_dataviz" height="200" width="400"></div>
-
-              <p id="feedback"><b>If you want to spend <span
-                 id="timeSpent">1 </span> minute(s)
-                helping, focus on this:</b>
-              <span id="focus">
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
-                eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim
-                ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut
-                aliquip ex ea commodo consequat.</span></p>
-
-              <button id="startSession">Move Over (Physically) and Help</button>
-
-            </div>
-          </div>
-    </main>
     <script>
-
+      document.addEventListener('alpine:init', () => {
+        Alpine.data('form', () => ({
+          selected: "",
+          save() {
+            if(this.selected !== "") {
+              localStorage.setItem("id", this.selected)
+              window.location.href = '/editor';
+            }
+          }
+        }))
+      })
     </script>
-    <!-- <script type="module" src="./src/main.ts"></script> -->
-    <script type="module" src="./src/smm.js"></script>
-
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/tippy.js@6/dist/tippy-bundle.umd.js"></script>
   </body>
 </html>

@@ -41,7 +41,7 @@ def view_menu(menu: Menu):
     Display the menu items with their cost in the following format:
 
     item | cost
-    chicken | 12.00
+    chicken | 12.0
 
     The first line is a header followed by each item and its corresponding cost on a new line.
     """
@@ -50,32 +50,32 @@ def view_menu(menu: Menu):
 
 def create_order(customer: Customer) -> int:
     """
-    Create a new order for the customer.
+    Create a new order to the customer dictionary.
 
     The order will have a 4-digit unique id, an empty list of items, and a cost of 0.
 
-    Note: Check if the uuid is not already an order, if it is pick a new uuid
+    Note: Check if the uuid is not already in customer.order, if it is pick a new uuid
     """
     pass
 
 
 def clear_order(customer: Customer, order_id: int):
     """
-    Clear the order from the customer by removing all items and resetting the
+    Clear the order (look up the id) from the customer by removing all items and resetting the
     cost to zero.
 
     After clearing, prints:
         Order cleared.
 
     Args:
-        order (Order): The order to be cleared.
+        order_id: The order to be cleared.
     """
     pass
 
 
 def view_order_summary(order: Order, menu: Menu):
     """
-    Print a summary of the order including each item with its cost and the total cost.
+    Print a summary of the given order including each item with its cost and the total cost.
 
     Note: Use `format(x, ".2f")` to format to the second decimal
 
@@ -93,7 +93,8 @@ def view_order_summary(order: Order, menu: Menu):
 
 def add_to_order(customer: Customer, order_id: int, menu: Menu, item: str):
     """
-    Add an item to the order if it exists on the menu and update the total cost.
+    Add an item to the order if it exists on the menu and is in the customer's
+    order dictionary, update the total cost.
 
     Args:
         order_id (int): The order to update.
@@ -112,7 +113,8 @@ def add_to_order(customer: Customer, order_id: int, menu: Menu, item: str):
 
 def remove_from_order(customer: Customer, order_id: int, menu: Menu, item: str) -> bool:
     """
-    Remove an item from the customer's order if it exists and update the total cost.
+    Remove an item from the customer's order if it exists in the customer's
+    order dictionary, update the total cost.
 
     Args:
         order (Order): The order from which the item should be removed.
@@ -144,7 +146,7 @@ def calculate_order_cost(order: Order, menu: Menu):
 
 def get_receipt(customer: Customer, menu: Menu):
     """
-    Print all Orders from the customer:
+    Print all orders from the customer's order dictionary:
 
         [Customer name]:
         -----
@@ -173,7 +175,8 @@ def get_receipt(customer: Customer, menu: Menu):
 
 def add_to_queue(restaurant: Restaurant, customer: Customer):
     """
-    Add an incoming customer orders to the restaurant's order queue.
+    Add an incoming customer orders (from the customer order dictionary)
+    to the restaurant's order queue.
 
     Args:
         customer (Customer): The customer whose order is to be added.

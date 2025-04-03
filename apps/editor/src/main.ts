@@ -9,16 +9,12 @@ import './assets/styles.css';
 
 import * as Y from 'yjs';
 import { yCollab } from 'y-codemirror.next';
-import { YText } from 'yjs/dist/src/internals';
 
-import { generateId } from 'zoo-ids';
 import { WebrtcProvider } from 'y-webrtc';
 
 import { extension } from './extension';
 
-const id = Math.floor(Math.random() * 1e9).toString(36);
-const animalId = generateId(id, { numAdjectives: 1, caseStyle: 'titlecase' });
-localStorage.setItem('id', animalId);
+const animalId = localStorage.getItem('id');
 
 // TODO: update for wss
 // const ws = new WebSocket(`wss://prime-lab.cs.vt.edu:8000/ws/${animalId}`);
@@ -60,6 +56,7 @@ ws.addEventListener('message', (event) => {
     alert("The countdown has finished!");
   }
   if (data['event'] === 'StartHelpSession') {
+    console.log("hi2")
     if (data['payload']['helpee'] === animalId ) {
       showNotificationHelpee(data['payload']['time'] || 3000,data['payload']['helper']);
     } else if (data['payload']['helper'] === animalId) {
@@ -72,7 +69,6 @@ ws.addEventListener('message', (event) => {
 
 const minutesElement = document.getElementById('minutes') as HTMLSpanElement;
 const secondsElement = document.getElementById('seconds') as HTMLSpanElement;
-
 
 
 export function updateGraph(nodeId: string) {
@@ -317,13 +313,13 @@ function clearCode() {
 }
 
 function helpMe() {
-  fetch(`https://${backendServer}:8000/helpNotification`, {
+  fetch(`https://${backendServer}:8000/helpMe`, {
     method: 'POST',
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ id: animalId, choice: "Help", text: secondaryView.state.doc.toString() }),
+    body: JSON.stringify({ id: animalId, choice: "Help", text:"" }),
   });
 }
 
@@ -390,7 +386,7 @@ document.addEventListener(
 function showNotificationHelper( hint,duration = 3000, helpee) {
   const notification = document.createElement("div");
   notification.classList.add("popup-notification");
-  
+
   const messageElement = document.createElement("p");
   messageElement.innerText = "Please go over to " + helpee+" and help them!";
   const hintElement = document.createElement("small");
@@ -400,7 +396,7 @@ function showNotificationHelper( hint,duration = 3000, helpee) {
 
   const countdownElement = document.createElement("span");
   countdownElement.innerText = ` (${duration / 1000}s)`;
-  
+
   notification.appendChild(messageElement);
   notification.appendChild(hintElement);
   notification.appendChild(countdownElement);
@@ -430,7 +426,7 @@ function showNotificationHelpee(duration = 3000, helper) {
 
   const countdownElement = document.createElement("span");
   countdownElement.innerText = ` (${duration / 1000}s)`;
-  
+
   notification.appendChild(messageElement);
   notification.appendChild(hintElement);
   notification.appendChild(countdownElement);

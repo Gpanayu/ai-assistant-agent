@@ -53,7 +53,7 @@ class SocketManager:
         self.total_seconds = 20 * 60
         self.countdown_task = None
 
-    async def connect(self, ws: WebSocket, id: int):
+    async def connect(self, ws: WebSocket, id: str):
         await ws.accept()
         ws.id = id
         self.connections.append(ws)
@@ -128,6 +128,7 @@ class GraphNode:
                         "content": f"{self.claimed_by} is working on {self.name}",
                     }
                 )
+                editor_manager.profiles[self.claimed_by] = self.name
             elif self.claimed_by == id and self.work_status == 1:
                 self.claimed_by = ""
                 self.work_status = 0
@@ -137,12 +138,14 @@ class GraphNode:
                         "content": f"{self.claimed_by} is not working on {self.name}",
                     }
                 )
+                editor_manager.profiles[self.claimed_by] = ""
                 self.start_time = None
 
     async def update_completed(self, completed: int, remaining: int):
         if self.claimed_by != "":
             if completed == remaining and remaining != 0:
                 self.work_status = 2
+                editor_manager.profiles[self.claimed_by] = ""
                 editor_manager.message_history.append(
                     {"role": "user", "content": f"{self.name} is complete"}
                 )
@@ -221,7 +224,14 @@ class EditorManager:
         self.help_queue = []
         self.message_history = [
             {"role": "system", "content": ("Keep all responses 1 sentence long. ")},
-            {"role": "system", "content": ("The test is 20 minutes long")},
+            {
+                "role": "system",
+                "content": (
+                    """The test is 20 minutes long and each
+                                           task is estimated to be finished in 3
+                                           minutes or less"""
+                ),
+            },
             {
                 "role": "system",
                 "content": """
@@ -254,9 +264,9 @@ class EditorManager:
                             before also have concepts
 
                             The tasks have concepts maps like this:
-                            (view_menu, String Interpolation + Looping)
-                            (create_order, Random num generation + Object Initiation)
-                            (clear_order, List Operations)
+                            (view_menu, String Interpolation + Looping + Dictionary concepts)
+                            (create_order, Random num generation + Object Initiation + Dictionary Operations)
+                            (clear_order, List Operations + Dictionary Lookup)
                             (view_order_summary, Looping + String Interpolation)
                             (add_to_order, Conditional Statement (If-else) + List concepts + String Interpolation)
                             (remove_from_order, Conditional Statement (If-else) + List concepts + String Interpolation + Function Calling)
@@ -300,14 +310,20 @@ class EditorManager:
                 await socketManager.direct_message(id=id, msg=json.dumps(event))
             else:
                 helpee = self.help_queue[0]
-                prompt2 = f"Here is {helpee}s code: \n {self.individual[helpee]}"
+                prompt2 = f"""Here is {helpee[0]}s code: \n
+                {self.individual[helpee[0]]}"""
+
+                # how likely is it that the group will finish at the end of 20
+                # minutes if the person spends 5 minutes helping?
 
                 prompt2 += f"""Organize help sessions of 1 minute, 2 minutes, 3
-                minutes, 4 minutes, and 5 minutes to help {helpee} and """
-                prompt2 += f"""return to me the impact of
-                resolving {helpee}'s problem to the whole project given that
-                {graph_manager.percent_done()} of the project is complete as a
-                percentage and what to focus to solve the problem\n"""
+                minutes, 4 minutes, and 5 minutes to help {helpee[0]} and """
+                prompt2 += f"""return to me an array of options formatted {{
+                    number_of_tasks_i_could_be_doing call this field individual_disruption,
+                    estimated_percent_team_can_do_in_{socketManager.total_seconds}_seconds_if_complete,
+                  call this field prediction,
+                    what_to_focus_to_solve_the_problem call this field focus
+                    }}\n"""
                 prompt2 += "Return this an array called options.\n"
 
                 suggestions = await self.get_ollama_response(prompt2)
@@ -315,11 +331,11 @@ class EditorManager:
                 event = {
                     "event": "notification",
                     "payload": {
-                        "context": "Help this jit",
+                        "context": f"{helpee[0]} needs {helpee[1]} help with {self.profiles[helpee[0]]}",
                         "help": "doneHelp",
                         "options": json.loads(response).get("options"),
                         "suggestions": json.loads(suggestions).get("options"),
-                        "percentDone": graph_manager.percent_done()
+                        "percentDone": graph_manager.percent_done(),
                     },
                 }
                 await socketManager.direct_message(id=id, msg=json.dumps(event))
@@ -330,18 +346,14 @@ class EditorManager:
                     "context": "",
                     "help": "helpSystem",
                     "options": [
-                        {
-                            "task_title": "Quick Help 💡"
-                        },
+                        {"task_title": "Quick Help 💡"},
                         {
                             "task_title": "I am fully stuck 🆘",
                         },
-                        {
-                            "task_title": "No Help 🚫"
-                        }
+                        {"task_title": "No Help 🚫"},
                     ],
-                    "progress": graph_manager.get_task_summary()
-                }
+                    "progress": graph_manager.get_task_summary(),
+                },
             }
             await socketManager.direct_message(id=id, msg=json.dumps(event))
 
@@ -382,9 +394,13 @@ class EditorManager:
 
         prompt += (
             f"""Suggest 3 options for {id} using their concept knowledge
-                   and team progress. """
+                   and best benefits the team. """
             "Return as JSON named options "
-            "{{task_title, difficulty_stars, estimated_time_in_seconds, reasoning}}"
+            f"""{{task_title,
+                  estimated_percent_team_can_do_in_{socketManager.total_seconds}_seconds_if_complete
+                  call this field prediction,
+                  estimated_time_to_complete_in_seconds call this field estimated_time_in_seconds,
+                  reasoning}}"""
             "Only return this array"
         )
 
@@ -552,9 +568,16 @@ def stop_timer(request: Request):
         socketManager.countdown_task = False
     return "ok"
 
+
 @app.post("/StartHelpSession")
-async def start_help_session(helpee: str, helper: str, time: int,hint: str="this is hint"):
-    connected_ids = {conn.id for conn in socketManager.connections if conn.id != "control"}
+async def start_help_session(
+    helper: str, time: int, hint: str = "this is hint"
+):
+    connected_ids = {
+        conn.id for conn in socketManager.connections if conn.id != "control"
+    }
+
+    helpee = editor_manager.help_queue.pop()
 
     if helpee in connected_ids and helper in connected_ids:
         event = {
@@ -564,7 +587,7 @@ async def start_help_session(helpee: str, helper: str, time: int,hint: str="this
                 "helper": helper,
                 "time": time,
                 "hint": hint,
-            }
+            },
         }
         await socketManager.broadcast(json.dumps(event))
         print("Starting help session between helpee ", helpee, "and helper ", helper)
@@ -577,7 +600,9 @@ async def start_help_session(helpee: str, helper: str, time: int,hint: str="this
 @app.post("/notify")
 async def push_notification(id: str, task: str, done: bool, test: bool):
     if test:
-        editor_manager.individual["Pickles"] = """
+        editor_manager.individual[
+            "Pickles"
+        ] = """
 # Personal Playground
 # Code will not be shared with others
 from study_problem_classes import Menu, Order, Customer, Restaurant
@@ -593,10 +618,9 @@ def view_menu(menu: Menu):
     \"""
     for k,v in menu.dishes:
         """
-        editor_manager.message_history.append({
-            "role": "user",
-            "content": "Pickles is working on create_order"
-        })
+        editor_manager.message_history.append(
+            {"role": "user", "content": "Pickles is working on create_order"}
+        )
         editor_manager.help_queue.append("Pickles")
     else:
         editor_manager.help_queue = []
@@ -764,40 +788,32 @@ async def reply_to_notif(body: ReplyBody):
         await editor_manager.send_notification(body.id, task="", done=False)
 
 
-
 @app.post("/replyToHelp")
 async def reply_to_help(body: ReplyBody):
+    print("help queue is ", editor_manager.help_queue)
     helpType = ""
     if body.choice == "Quick Help 💡":
         helpType = "quick"
-        print(body.id, body.choice)
     elif body.choice == "I am fully stuck 🆘":
-        helpType = "full"
-        print(body.id, body.choice)
+        helpType = "a lot of"
 
     else:
         helpType = "none"
-        if body.id in editor_manager.help_queue:
-            editor_manager.help_queue.remove(body.id)
-            print(body.id, body.choice)
+
+    if helpType != "none" and body.id not in editor_manager.help_queue:
+        editor_manager.help_queue.append((body.id, helpType))
 
 
-@app.post("/helpNotification")
-async def reply_to_notif(body: ReplyBody):
-    # user_response(body.id, body.choice)
-    print(body.id, body.choice)
-    if body.choice == "Help":
-        if body.id not in editor_manager.help_queue:
-            editor_manager.help_queue.append(body.id)
-        print("help queue is ", editor_manager.help_queue)
-        await editor_manager.send_notification(body.id, task="", done=False)
+@app.post("/helpMe")
+async def helpMe(body: ReplyBody):
+    await editor_manager.send_notification(body.id, task="", done=False)
 
 
 @app.on_event("startup")
 @repeat_every(seconds=10)
 async def monitor_progress():
     for key, value in graph_manager.graph.items():
-        if get_time_diff(value.start_time) > 80 and value.work_status == 1:
+        if get_time_diff(value.start_time) > 150 and value.work_status == 1:
             await editor_manager.send_notification(value.claimed_by, "", False)
             graph_manager.graph[key].start_time = datetime.now()
 

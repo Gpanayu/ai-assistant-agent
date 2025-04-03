@@ -1,7 +1,7 @@
 Function,Concepts,description,Currently doing,done
-view_menu,"String Interpolation, Looping",Prints the menu items and their cost.,,
-create_order,"Random num generation, Object Initiation, ",Creates an order with a random 4-digit ID and empty items list.,,
-clear_order,List Operations,Clears all items in the order and resets cost to zero.,,
+view_menu,"String Interpolation, Looping, Dictionary concepts",Prints the menu items and their cost.,,
+create_order,"Random num generation, Object Initiation, Dictionary Operation",Creates an order with a random 4-digit ID and empty items list.,,
+clear_order,"Dictionary Lookup, List Operations",Clears all items in the order and resets cost to zero.,,
 view_order_summary,"Looping, String Interpolation",Displays all items in the order with their cost and the total cost.	,,
 add_to_order,"Conditional Statement(If-else), List concepts, String Interpolation",Adds an item to the order if it exists in the menu; updates the order cost.	,,
 remove_from_order,"Conditional Statement(If-else), List concepts, String Interpolation. Function Calling",Removes an item from the order if it exists; updates the cost.,,

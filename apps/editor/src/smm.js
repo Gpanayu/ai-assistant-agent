@@ -68,7 +68,7 @@ ws.addEventListener("message", (event) => {
 
         info.addEventListener("mouseover", () => {
           tippy(info, {
-            content: option["reasoning"],
+            content: `Reasoning: ${option["reasoning"]}`,
           });
         })
         upperDiv.append(title)
@@ -84,6 +84,9 @@ ws.addEventListener("message", (event) => {
         })
 
 
+        const prediction = document.createElement("p")
+        prediction.textContent = `Estimated project completion in the remaining time: ${option["prediction"]}%`
+        button.append(prediction)
 
         const challenge = document.createElement("p")
         challenge.textContent = `Estimated Time: ${option["estimated_time_in_seconds"]} seconds`
@@ -98,7 +101,7 @@ ws.addEventListener("message", (event) => {
 
       // Initialize plot
       updatePrediction([
-        {who: "Impact %", prediction: +suggestions[0].impact.slice(0, -1), completed: 0},
+        {who: "Projected Completion %", prediction: +suggestions[0].impact, completed: 0},
       ])
 
 
@@ -128,7 +131,7 @@ ws.addEventListener("message", (event) => {
 
         info.addEventListener("mouseover",() => {
           tippy(info, {
-            content: option["reasoning"],
+              content: `Reasoning: ${option["reasoning"]}`,
           });
         })
 
@@ -145,9 +148,9 @@ ws.addEventListener("message", (event) => {
           answer = title.textContent
         })
 
-        const reasoning = document.createElement("p")
-        reasoning.textContent = `Reasoning: ${option["reasoning"]}`
-        button.append(reasoning)
+        const prediction = document.createElement("p")
+        prediction.textContent = `Estimated project completion in the remaining time: ${option["prediction"]}%`
+        button.append(prediction)
 
         const challenge = document.createElement("p")
         challenge.textContent = `Estimated Time: ${option["estimated_time_in_seconds"]} seconds`
@@ -387,11 +390,6 @@ async function updatePrediction(data) {
     let xAxis = svg3.append("g")
         .attr("transform", "translate(0," + height + ")")
 
-  // TODO:
-  // Change response to project success?
-  // EMail peopel
-
-
     let brush = d3.brushX().extent([[0, height - y.bandwidth() - 4], [width, y.bandwidth() + 4]])
         .on("brush", brushed)
         .on("end", brushEnded)
@@ -401,9 +399,10 @@ async function updatePrediction(data) {
         if (!event.selection) return; // Ignore if no selection
         let [x0, x1] = event.selection.map(x.invert); // Convert pixel to data
         // value = x1;
-        if (x0 !== 0 || x1 !== value) {
+        if (x0 !== 0) {
             d3.select(this).call(brush.move, [0, x(value)]);
         }
+        else
         // else if (x1 < completed) {
         //   return
         // }
@@ -591,9 +590,9 @@ if (sliderEl) {
     feedback.style.display = "block";
     const focus = document.querySelector("#focus")
     focus.textContent = suggestions[+tempSliderValue.value].focus
-    const impact = suggestions[+tempSliderValue.value].impact.slice(0,-1)
+    const impact = suggestions[+tempSliderValue.value].prediction
     updatePrediction([
-      {who: "Impact %", prediction: +impact, completed: complete },
+      {who: "Projected Completion %", prediction: impact, completed: complete },
     ])
 
     const progress = (parseInt(tempSliderValue.value) / parseInt(sliderEl.max)) * 100
@@ -608,3 +607,14 @@ if (sliderEl) {
 
 }
 
+const startCollaborating = document.querySelector("#startSession")
+
+if (startCollaborating) {
+    startCollaborating.addEventListener("click", () => {
+      console.log("hi")
+      fetch(`https://${backendServer}:8000/StartHelpSession?helper=${animalId}&time=${+sliderValue.textContent}&hint="${suggestions[+sliderValue.textContent].focus}"`, {
+        method: "POST",
+      })
+
+    })
+}
