@@ -44,6 +44,7 @@ def view_menu(menu: Menu):
     chicken | 12.0
 
     The first line is a header followed by each item and its corresponding cost on a new line.
+    Hint: Use .items()
     """
     pass
 
@@ -61,7 +62,7 @@ def create_order(customer: Customer) -> int:
 
 def clear_order(customer: Customer, order_id: int):
     """
-    Clear the order (look up the id) from the customer by removing all items and resetting the
+    Clear the order (look up the id) from the customer by removing all items and reset the
     cost to zero.
 
     After clearing, prints:
@@ -77,13 +78,14 @@ def view_order_summary(order: Order, menu: Menu):
     """
     Print a summary of the given order including each item with its cost and the total cost.
 
-    Note: Use `format(x, ".2f")` to format to the second decimal
 
     Expected output format:
         Order Summary:
         chicken - $12.00
         pork - $10.00
         Total: $22.00
+
+    Hint: Use `format(x, ".2f")` to format to the second decimal
 
     Args:
         order (Order): The order to summarize.

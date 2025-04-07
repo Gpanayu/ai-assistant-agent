@@ -18,7 +18,7 @@ ws.addEventListener("message", (event) => {
     suggestions = data["payload"]["suggestions"]
     console.table(suggestions)
 
-    complete = data["payload"]["percentDone"] * 100
+    complete = data["payload"]["percentDone"]
     console.log(complete)
 
     answer = ""
@@ -45,11 +45,14 @@ ws.addEventListener("message", (event) => {
     const helper = document.querySelector("#for-helper")
     helper.classList.add("disabled")
 
+    document.querySelector(".info div").style.display = "block"
+
     if (data['payload']['help'] === "doneNoHelp") {
       code = true
       title.textContent = "Task Complete!"
 
       document.querySelector("#options").innerHTML = ""
+
 
       for (let option of data["payload"]["options"]) {
         console.log(option)
@@ -85,7 +88,7 @@ ws.addEventListener("message", (event) => {
 
 
         const prediction = document.createElement("p")
-        prediction.textContent = `Estimated project completion in the remaining time: ${option["prediction"]}%`
+        prediction.textContent = `Projected completion within the remaining time: ${option["prediction"]}%`
         button.append(prediction)
 
         const challenge = document.createElement("p")
@@ -101,12 +104,10 @@ ws.addEventListener("message", (event) => {
 
       // Initialize plot
       updatePrediction([
-        {who: "Projected Completion %", prediction: +suggestions[0].impact, completed: 0},
+        {who: "Projected Completion %", prediction: +suggestions[0].impact, completed: complete},
       ])
 
-
-      document.querySelector(".info").style.gridTemplateColumns ="1fr 1fr";
-      document.querySelector(".info div").style = "padding: 20px; border: 1px solid black; border-radius: 5px;"
+      document.querySelector(".info div").style.display = "none"
 
       title.textContent = "Collaborative Opportunity!"
 
@@ -115,49 +116,49 @@ ws.addEventListener("message", (event) => {
 
       document.querySelector("#options").innerHTML = ""
 
-      for (let option of data["payload"]["options"]) {
-        console.log(option)
-        const li = document.createElement("li")
-        const button = document.createElement("button")
-        button.className = "select";
-        li.append(button)
-
-        const upperDiv = document.createElement("div")
-        upperDiv.style = "display: flex; align-items: center; justify-content: space-between; padding: 0"
-
-        const info = document.createElement("i")
-        info.className = "fa-info-circle fa-solid"
-        info.style.zIndex = 4
-
-        info.addEventListener("mouseover",() => {
-          tippy(info, {
-              content: `Reasoning: ${option["reasoning"]}`,
-          });
-        })
-
-        const title = document.createElement("h4")
-        title.className = "title"
-        title.textContent = option["task_title"]
-        upperDiv.append(title)
-        upperDiv.append(info)
-        button.append(upperDiv)
-        button.addEventListener("click", () => {
-          document.querySelectorAll("#options button.active").forEach(btn => btn.classList.remove("active"));
-          // Optional: if you also want to add 'active' to the clicked one
-          button.classList.add("active");
-          answer = title.textContent
-        })
-
-        const prediction = document.createElement("p")
-        prediction.textContent = `Estimated project completion in the remaining time: ${option["prediction"]}%`
-        button.append(prediction)
-
-        const challenge = document.createElement("p")
-        challenge.textContent = `Estimated Time: ${option["estimated_time_in_seconds"]} seconds`
-        button.append(challenge)
-
-        document.querySelector("#options").append(li)
-      }
+      // for (let option of data["payload"]["options"]) {
+      //   console.log(option)
+      //   const li = document.createElement("li")
+      //   const button = document.createElement("button")
+      //   button.className = "select";
+      //   li.append(button)
+      //
+      //   const upperDiv = document.createElement("div")
+      //   upperDiv.style = "display: flex; align-items: center; justify-content: space-between; padding: 0"
+      //
+      //   const info = document.createElement("i")
+      //   info.className = "fa-info-circle fa-solid"
+      //   info.style.zIndex = 4
+      //
+      //   info.addEventListener("mouseover",() => {
+      //     tippy(info, {
+      //         content: `Reasoning: ${option["reasoning"]}`,
+      //     });
+      //   })
+      //
+      //   const title = document.createElement("h4")
+      //   title.className = "title"
+      //   title.textContent = option["task_title"]
+      //   upperDiv.append(title)
+      //   upperDiv.append(info)
+      //   button.append(upperDiv)
+      //   button.addEventListener("click", () => {
+      //     document.querySelectorAll("#options button.active").forEach(btn => btn.classList.remove("active"));
+      //     // Optional: if you also want to add 'active' to the clicked one
+      //     button.classList.add("active");
+      //     answer = title.textContent
+      //   })
+      //
+      //   const prediction = document.createElement("p")
+      //   prediction.textContent = `Projected completion within the remaining time: ${option["prediction"]}%`
+      //   button.append(prediction)
+      //
+      //   const challenge = document.createElement("p")
+      //   challenge.textContent = `Estimated Time: ${option["estimated_time_in_seconds"]} seconds`
+      //   button.append(challenge)
+      //
+      //   document.querySelector("#options").append(li)
+      // }
     }
     else if (data['payload']['help'] === "helpSystem") {
       code = false
@@ -229,6 +230,10 @@ document.querySelector('#accept').addEventListener('click', () => {
   }
   acceptNotif();
 });
+
+document.querySelector('#dontHelp').addEventListener('click', () => {
+  document.querySelector('#notification').classList.remove('active');
+})
 
 function acceptNotif() {
   if (HelpType !== "") {
@@ -611,10 +616,11 @@ const startCollaborating = document.querySelector("#startSession")
 
 if (startCollaborating) {
     startCollaborating.addEventListener("click", () => {
-      console.log("hi")
       fetch(`https://${backendServer}:8000/StartHelpSession?helper=${animalId}&time=${+sliderValue.textContent}&hint="${suggestions[+sliderValue.textContent].focus}"`, {
         method: "POST",
+      }).then(() => {
+        document.querySelector('#notification').classList.remove('active');
       })
-
     })
+
 }

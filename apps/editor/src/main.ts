@@ -383,7 +383,7 @@ document.addEventListener(
 // }
 //
 
-function showNotificationHelper( hint,duration = 3000, helpee) {
+function showNotificationHelper(hint, duration = 3000, helpee) {
   const notification = document.createElement("div");
   notification.classList.add("popup-notification");
 
@@ -419,7 +419,7 @@ function showNotificationHelpee(duration = 3000, helper) {
   const notification = document.createElement("div");
   notification.classList.add("popup-notification");
   const messageElement = document.createElement("p");
-  messageElement.innerText = "Please go over to  " + helper+" and try to solve the problems you are encountering!";
+  messageElement.innerText = `Please go over to ${helper} and try to solve the problems you are encountering!`
   const hintElement = document.createElement("small");
   hintElement.style.display = "block";
   hintElement.style.opacity = "0.8";

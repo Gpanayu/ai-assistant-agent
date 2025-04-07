@@ -167,8 +167,8 @@ const cursorTooltipField = StateField.define<readonly Tooltip[]>({
   provide: f => showTooltip.computeN([f], state => state.field(f))
 })
 
-const backendServer = "127.0.0.1"
-// const backendServer = "prime-lab.cs.vt.edu"
+// const backendServer = "127.0.0.1"
+const backendServer = "prime-lab.cs.vt.edu"
 
 // const ws = new WebSocket("wss://prime-lab.cs.vt.edu:8000/ws/control");
 const ws = new WebSocket(`wss://${backendServer}:8000/ws/control`);

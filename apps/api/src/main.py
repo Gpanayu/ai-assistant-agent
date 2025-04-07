@@ -178,7 +178,8 @@ class GraphManager:
                 )
 
     def update_status(self, node_id: str, id: str):
-        self.graph[node_id].update_status(id)
+        if node_id in self.graph:
+            self.graph[node_id].update_status(id)
 
     async def update_completed(self, node_id: str, completed: int, remaining: int):
         await self.graph[node_id].update_completed(completed, remaining)
@@ -194,11 +195,10 @@ class GraphManager:
         await socketManager.broadcast(json.dumps(event))
 
     def percent_done(self):
-        nodes_done = 0
+        completion = 0
         for node in self.graph.values():
-            if node.work_status == 2:
-                nodes_done += 1
-        return nodes_done // len(self.graph.values())
+            completion += node.completed
+        return (completion / 30) * 100
 
     def get_task_summary(self):
         """
@@ -466,6 +466,41 @@ class FunctionReplacer:
         with open(self.main_file, "w") as f:
             f.write(new_code)
 
+    def parse_pytest_output(self, output: str) -> str:
+        results = []
+        lines = output.splitlines()
+
+        is_failed = False
+        failure_lines = []
+
+        for line in lines:
+            stripped = line.strip()
+            if "::" in stripped and ("PASSED" in stripped or "FAILED" in stripped):
+                test_status = "✅" if "PASSED" in stripped else "❌"
+                current_test = stripped.replace(" PASSED", "").replace(" FAILED", "")
+                if test_status == "✅":
+                    results.append(f"{test_status} {current_test}")
+                    is_failed = False
+                else:
+                    results.append(f"{test_status} {current_test}")
+                    is_failed = True
+                    failure_lines = []
+
+            elif is_failed:
+                # Accumulate lines until next test or end
+                if line.startswith(" " * 2) or line.strip().startswith("E   ") or line.strip().startswith(">"):
+                    failure_lines.append(line)
+                elif "::" in stripped:
+                    # End of failure block
+                    if failure_lines:
+                        results[-1] += "\n" + "\n".join(f"   {l.strip()}" for l in failure_lines)
+                    is_failed = False
+
+        # In case last failure block never closed
+        if is_failed and failure_lines:
+            results[-1] += "\n" + "\n".join(f"   {l.strip()}" for l in failure_lines)
+        return "\n".join(results)
+
     async def run_tests(self, user):
         try:
             print("Running test cases...")
@@ -484,11 +519,11 @@ class FunctionReplacer:
                     sys.executable,
                     "-m",
                     "pytest",
+                    "-vv",
                     "test_study_problem.py",
                     "-k",
                     test_cases,
-                    "-vv",
-                    "--color=no"
+                    "--color=no",
                     # "--tb=short",
                     # "-q",
                 ],
@@ -513,8 +548,8 @@ class FunctionReplacer:
                     completed=passed,
                     remaining=total_selected,
                 )
-
-            print(result.stdout)
+            test = self.parse_pytest_output(result.stdout)
+            print(test)
             # print(result.stderr)
         except Exception as e:
             print("Error running tests:", e)
@@ -570,13 +605,11 @@ def stop_timer(request: Request):
 
 
 @app.post("/StartHelpSession")
-async def start_help_session(
-    helper: str, time: int, hint: str = "this is hint"
-):
+async def start_help_session(helper: str, time: int, hint: str = "this is hint"):
     connected_ids = {
         conn.id for conn in socketManager.connections if conn.id != "control"
     }
-    helpee = editor_manager.help_queue[0]
+    helpee = editor_manager.help_queue[0][0]
 
     if helpee in connected_ids and helper in connected_ids:
         event = {
@@ -584,7 +617,7 @@ async def start_help_session(
             "payload": {
                 "helpee": helpee,
                 "helper": helper,
-                "time": time,
+                "time": time * 1000 * 60,
                 "hint": hint,
             },
         }
@@ -593,7 +626,7 @@ async def start_help_session(
         print(event)
         editor_manager.help_queue.pop()
         return {"status": "success"}
-        
+
     else:
         return {"status": "failure", "message": "One or both users not connected"}
 
@@ -601,9 +634,7 @@ async def start_help_session(
 @app.post("/notify")
 async def push_notification(id: str, task: str, done: bool, test: bool):
     if test:
-        editor_manager.individual[
-            "Pickles"
-        ] = """
+        editor_manager.individual["P"] = """
 # Personal Playground
 # Code will not be shared with others
 from study_problem_classes import Menu, Order, Customer, Restaurant
@@ -619,10 +650,12 @@ def view_menu(menu: Menu):
     \"""
     for k,v in menu.dishes:
         """
+
+        editor_manager.profiles["P"] = "create_order"
         editor_manager.message_history.append(
-            {"role": "user", "content": "Pickles is working on create_order"}
+            {"role": "user", "content": "P working on create_order"}
         )
-        editor_manager.help_queue.append("Pickles")
+        editor_manager.help_queue.append(("P", "quick"))
     else:
         editor_manager.help_queue = []
     await editor_manager.send_notification(id, task, done)
@@ -814,7 +847,12 @@ async def helpMe(body: ReplyBody):
 @repeat_every(seconds=10)
 async def monitor_progress():
     for key, value in graph_manager.graph.items():
-        if get_time_diff(value.start_time) > 150 and value.work_status == 1:
+        if (
+            get_time_diff(value.start_time) > 150
+            and value.work_status == 1
+            and len([t for t in editor_manager.help_queue if t[0] ==
+                     value.claimed_by]) == 0
+        ):
             await editor_manager.send_notification(value.claimed_by, "", False)
             graph_manager.graph[key].start_time = datetime.now()
 
@@ -824,6 +862,10 @@ class Chat(BaseModel):
     time: int
     task: str
 
+@app.get("/percent")
+def percent():
+    print(len(graph_manager.graph))
+    return graph_manager.percent_done()
 
 @app.post("/ollama")
 async def ollama(flex: Chat):
