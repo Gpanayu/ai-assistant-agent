@@ -1,0 +1,20 @@
+.ResizeHandleOuter {
+  flex: 0 0 10px;
+  position: relative;
+  outline: none;
+}
+
+.ResizeHandleInner {
+  position: absolute;
+  top: 0.25em;
+  bottom: 0.25em;
+  left: 0.25em;
+  right: 0.25em;
+  border-radius: 0.25em;
+  background-color: black;
+}
+
+.Output {
+  background-color: lightgrey;
+  padding: 10px;
+}

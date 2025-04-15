@@ -13,6 +13,11 @@
   overflow-y: scroll;
 }
 
+#individuals: {
+  height: 100%;
+  overflow-y: scroll;
+}
+
 #notification {
   position: absolute;
   bottom: 0;

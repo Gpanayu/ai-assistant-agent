@@ -203,6 +203,7 @@ ws.addEventListener("message", (event) => {
 
         // Create a new div element
         const entryDiv = document.createElement("div");
+        entryDiv.style.display = "block";
         const editor = document.createElement("p");
         entryDiv.textContent = `${key}`;
         editor.textContent = `${value}`;
