@@ -3,7 +3,7 @@ import { Title, AppShell, Text, Group, Burger } from '@mantine/core';
 import { useDisclosure, useLocalStorage } from '@mantine/hooks';
 import Home from "./components/Home"
 import Editor from "./components/Editor"
-
+import CollaborativeFlow from "./components/Tree2"
 export function App() {
   const [opened, { toggle }] = useDisclosure();
 
@@ -40,6 +40,10 @@ export function App() {
             <Route
               path="/editor"
               element={ <Editor/> }
+            />
+              <Route
+              path="/draw"
+              element={ <CollaborativeFlow/> }
             />
           </Routes>
         </AppShell.Main>

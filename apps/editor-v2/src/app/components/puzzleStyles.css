@@ -1,0 +1,24 @@
+/* puzzleStyles.css */
+
+/* Style for correctly connected edges */
+.correct-edge .react-flow__edge-path {
+    stroke: #4caf50; /* Green */
+    stroke-width: 2;
+  }
+  
+  /* Style for incorrectly connected edges */
+  .incorrect-edge .react-flow__edge-path {
+    stroke: #f44336; /* Red */
+    stroke-width: 2;
+    stroke-dasharray: 5 5; /* Make it dashed */
+  }
+  
+  /* Optional: Style for nodes */
+  .react-flow__node-default {
+    border: 1px solid #1a192b;
+    background: white;
+    padding: 10px 15px;
+    border-radius: 5px;
+    font-size: 12px;
+    text-align: center;
+  }

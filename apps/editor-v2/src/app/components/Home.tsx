@@ -28,13 +28,17 @@ export default function Home({setValue}: HomeProps) {
           <Title order={1}>Welcome To The Study</Title>
           <Text size="lg">Which user are you?</Text>
           <SimpleGrid w="100%">
-            <Button onClick={() => handleSelected("A")} variant={selected === "A" ? "light" :"default"}>A</Button>
-            <Button onClick={() => handleSelected("B")} variant={selected === "B" ? "light" :"default"}>B</Button>
-            <Button onClick={() => handleSelected("C")} variant={selected === "C" ? "light" :"default"}>C</Button>
+            <Button onClick={() => handleSelected('A')} variant={selected === 'A' ? "light" :"default"}>A</Button>
+            <Button onClick={() => handleSelected('B')} variant={selected === 'B' ? "light" :"default"}>B</Button>
+            <Button onClick={() => handleSelected('C')} variant={selected === 'C' ? "light" :"default"}>C</Button>
           </SimpleGrid>
           {/* TODO: Add protected route clause */}
           <Link to="/editor">
             <Button mt={10}>Goto Editor</Button>
+            
+          </Link>
+          <Link to="/draw">
+            <Button mt={10}>Goto Draw</Button>
           </Link>
         </Stack>
       </Stack>
