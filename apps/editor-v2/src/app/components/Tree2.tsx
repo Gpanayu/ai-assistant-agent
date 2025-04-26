@@ -9,12 +9,9 @@ import {
   addEdge,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import './puzzleStyles.css'; // We'll create this for styling
-
-// --- Puzzle Data (Paste the code from Step 2 here) ---
-// Define the nodes for the puzzle
+import './puzzleStyles.css'; 
 const puzzleNodeIds = [
-  "Restaurant", "Customer",
+  "Customer", "Restaurant",
   "view_menu", "create_order", "clear_order",
   "view_order_summary", "add_to_order", "remove_from_order",
   "calculate_order_cost", "get_receipt", "inventory_helper",
@@ -22,8 +19,7 @@ const puzzleNodeIds = [
   "add_to_queue", "average_cook_time"
 ];
 
-// Define the correct connections (solution)
-// Store as a Set for efficient lookup
+
 const correctLinksSet = new Set(
   [
     { source: "Customer", target: "view_menu" },
@@ -42,7 +38,7 @@ const correctLinksSet = new Set(
     { source: "cook_time_helper", target: "cook_order" },
     { source: "add_to_queue", target: "cook_order" },
     { source: "cook_time_helper", target: "average_cook_time" },
-  ].map(link => `${link.source}->${link.target}`) // Store as "source->target" strings
+  ].map(link => `${link.source}->${link.target}`) 
 );
 
 // Helper function to generate initial positions (simple grid layout)
@@ -73,7 +69,6 @@ const correctLinksSet = new Set(
 const initialNodes: any[] = [];
 // const initialEdges = [];
 
-// --- React Component ---
 export default function PuzzleApp() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [correctEdges, setCorrectEdges, onCorrectEdgesChange] = useEdgesState([]);
@@ -84,23 +79,20 @@ export default function PuzzleApp() {
   const allEdges = useMemo(() => [...correctEdges, ...incorrectEdges], [correctEdges, incorrectEdges]);
 
   const addNodeToCanvas = useCallback((nodeIdToAdd) => {
-    // Remove from available nodes
     setAvailableNodes((prev) => prev.filter(id => id !== nodeIdToAdd));
 
-    // Add to canvas nodes
+
     const newNode = {
       id: nodeIdToAdd,
-      // Initial position - place it somewhere predictable, e.g., near top-left
-      // More advanced: could calculate center of current view
-      position: { x: Math.random() * 200 + 50, y: Math.random() * 100 + 50 }, // Add slight randomness
+  
+      position: { x: Math.random() * 200 + 50, y: Math.random() * 100 + 50 }, 
       data: { label: nodeIdToAdd },
-      type: 'default', // Or your custom node type
+      type: 'default',
     };
     setNodes((nds) => nds.concat(newNode));
-  }, [setNodes, setAvailableNodes]); // Dependencies: setNodes, setAvailableNodes
+  }, [setNodes, setAvailableNodes]); 
 
 
-  // --- Connection Validation Logic (Remains the same) ---
   const onConnect = useCallback(
     (params) => {
       const connectionId = `${params.source}->${params.target}`;
@@ -121,28 +113,24 @@ export default function PuzzleApp() {
       [onCorrectEdgesChange, onIncorrectEdgesChange]
    );
 
-  // --- Puzzle Completion Check (Remains the same) ---
   const isPuzzleComplete = useMemo(() => correctEdges.length === correctLinksSet.size, [correctEdges]);
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden">
+    <div className="puzzle-app-container">
        {isPuzzleComplete && (
-        <div className="p-4 bg-green-200 text-green-800 font-bold text-center flex-shrink-0"> {/* Don't let banner shrink */}
+        <div className="completion-banner">
           Puzzle Complete! Well done!
         </div>
       )}
 
-      {/* React Flow Canvas Container - Fixed Height */}
-      {/* Added border for visibility */}
-      <div className="w-full border-b border-gray-300" style={{ height: '500px' }}>
+      <div className="canvas-container" style={{ height: '500px' }}>
         <ReactFlow
           nodes={nodes}
           edges={allEdges}
           onNodesChange={onNodesChange}
           onEdgesChange={handleEdgesChange}
           onConnect={onConnect}
-          fitView // Fit view when nodes are added/changed
-          // fitViewOptions={{ padding: 0.2 }} // Add padding on fitView
+          fitView
         >
           <Controls />
           <MiniMap />
@@ -150,24 +138,23 @@ export default function PuzzleApp() {
         </ReactFlow>
       </div>
 
-      {/* Node Palette Container - Takes remaining space */}
-      <div className="flex-1 w-full p-4 overflow-y-auto bg-gray-100">
-        <h3 className="text-lg font-semibold mb-3">Available Nodes</h3>
-        <div className="flex flex-wrap gap-2">
+      <div className="palette-container">
+        <h3 className="palette-title">Available Nodes</h3>
+        <div className="palette-nodes">
           {availableNodes.map((nodeId) => (
             <button
               key={nodeId}
               onClick={() => addNodeToCanvas(nodeId)}
-              className="px-3 py-1.5 bg-white border border-gray-300 rounded shadow hover:bg-gray-50 cursor-pointer text-sm"
+              className="palette-node-button"
             >
               {nodeId}
             </button>
           ))}
-          {availableNodes.length === 0 && nodes.length > 0 && ( // Show message only if palette is empty but canvas has nodes
-             <p className="text-gray-500">All nodes added to the canvas.</p>
+          {availableNodes.length === 0 && nodes.length > 0 && (
+             <p className="palette-message">All nodes added to the canvas.</p>
           )}
-           {availableNodes.length === 0 && nodes.length === 0 && ( // Initial state message
-             <p className="text-gray-500">Click nodes to add them to the canvas above.</p>
+           {availableNodes.length === 0 && nodes.length === 0 && (
+             <p className="palette-message">Click nodes to add them to the canvas above.</p>
            )}
         </div>
       </div>
