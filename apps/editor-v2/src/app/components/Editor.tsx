@@ -9,13 +9,18 @@ import * as Y from 'yjs';
 import { WebrtcProvider } from 'y-webrtc';
 import Tree from './Tree'
 import { channel } from 'diagnostics_channel';
-
+import HelpModal from './modals/HelpModal';
 import { useEffect, useState,useRef } from 'react';
 import { cursorTo } from 'readline';
 import { timeStamp } from 'console';
+import CollaborativeOpportunityModal from './modals/CollabModal';
+import GraphComponent from './SMM';
+import { ReactFlowProvider } from '@xyflow/react';
 export default function Editor() {
 
   const [opened, {open, close}] = useDisclosure(false)
+  const [helpOpened, { open: openHelp, close: closeHelp }] = useDisclosure(false);
+  const [helpOption, setHelpOption] = useState<string | null>(null);
   const [history, setHistory] = useState([]);
   const [personalCode, setPersonalCode] = useState("# Hello world\nprint('hello world')");
   const backendServer = "0.0.0.0";
@@ -116,29 +121,62 @@ export default function Editor() {
   function appendToHistory(output, all) {
     setHistory((prev) => [...prev, [new Date(), output, all]]);
   }
-  
+
+  function handleHelpSubmit() {
+    console.log("Help requested with option:", helpOption);
+    // Add logic here: send request to backend, notify teammates, etc.
+    // Example: sendWebSocketMessage({ event: 'requestHelp', option: helpOption, userId: storedUserId });
+    setHelpOption(null); // Reset selection
+    closeHelp(); // Close the modal
+}
+
 
   return (
     <>
       <Container fluid h={700}>
         <PanelGroup direction="horizontal">
+      
           <Panel defaultSize={30} collapsible={true} collapsedSize={1} minSize={20}>
-            <div style={{ overflow: 'auto' }}>
-              <Group  align='center'>
-                <Title order={3}>Team Editor</Title>
-                <Group>
-                  <Button size='compact-xs'>Test</Button>
-                </Group>
-              </Group>
-              <CodeMirror height="700px"
-                extensions={[python(),
-                yCollab(ytext, provider.awareness),
-              ]} />
-            </div>
+          <PanelGroup direction="vertical">
+              {/* --- Original Team Editor Panel --- */}
+              <Panel defaultSize={70} minSize={20}> {/* Adjust defaultSize as needed */}
+                <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                  <Group justify="space-between" p="xs" style={{ borderBottom: '1px solid #ccc' }}>
+                    <Title order={3}>Team Editor</Title>
+                    <Group>
+                      <Button size='compact-xs'>Test</Button>
+                    </Group>
+                  </Group>
+                  <div style={{ flexGrow: 1, overflow: 'auto' }}> {/* Allow CodeMirror to take remaining space */}
+                     <CodeMirror
+                       height="100%" 
+                       extensions={[python(),yCollab(ytext,provider.awareness)]} 
+                       style={{ height: '100%' }} 
+                     />
+                  </div>
+                </div>
+              </Panel>
+              {/* NEW: Resize Handle */}
+              <PanelResizeHandle className={styles.ResizeHandleOuter}>
+                 <div className={styles.ResizeHandleInner} style={{backgroundColor: '#eee', height: '5px'}}></div> {/* Basic styling */}
+              </PanelResizeHandle>
+              {/* NEW: Panel below Team Editor */}
+              <Panel minSize={20}>
+                <div style={{ padding: '10px' }}>
+                <ReactFlowProvider>
+
+<GraphComponent />
+</ReactFlowProvider>
+                </div>
+              </Panel>
+            </PanelGroup>
+
           </Panel>
           <PanelResizeHandle className={styles.ResizeHandleOuter}>
             <div className={styles.ResizeHandleInner}></div>
           </PanelResizeHandle>
+         
+
           <Panel minSize={1}>
             <PanelGroup direction='vertical'>
               <Panel defaultSize={110} collapsible={true} minSize={20}>
@@ -149,6 +187,8 @@ export default function Editor() {
                     <Button onClick={runPersonalCode} size='compact-xs'>Run</Button>
                     <Button onClick={clearCode} size='compact-xs'>Clear</Button>
                     <Button size='compact-xs'>Merge</Button>
+                    <Button onClick={openHelp} size='compact-xs'>Flag for Help</Button>
+
                   </Group>
                 </Group>
                 <CodeMirror 
@@ -197,9 +237,23 @@ export default function Editor() {
 
       <Modal size="75%" opened={opened} onClose={close} title="Progress Tree" centered>
         <div style={{ width: "100%", height: 500 }}>
-          <Tree />
+          {/* <Tree /> */}
+          <ReactFlowProvider>
+
+          <GraphComponent />
+          </ReactFlowProvider>
+
         </div>
       </Modal>
+       <HelpModal
+            isOpen={helpOpened}
+            onClose={() => {
+                closeHelp();
+                setHelpOption(null); // Reset on close
+            }}
+            >
+
+            </HelpModal>
     </>
   )
 }
