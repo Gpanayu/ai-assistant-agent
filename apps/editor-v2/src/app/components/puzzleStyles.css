@@ -22,3 +22,103 @@
     font-size: 12px;
     text-align: center;
   }
+
+
+
+/* Styling for the modal overlay wrapper */
+.modal-overlay {
+  position: fixed; /* Position fixed relative to the viewport */
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6); /* Semi-transparent black background */
+  display: flex; /* Use flexbox to center the modal content */
+  justify-content: center;
+  align-items: center;
+  z-index: 1000; /* High z-index to ensure it's on top */
+}
+
+
+
+/* Style for the canvas container */
+.canvas-container {
+  border: 1px solid #ccc; /* Optional border */
+  position: relative; /* Needed for z-index stacking */
+  z-index: 1; /* Lower z-index than the modal */
+}
+
+/* Style for the palette container */
+.palette-container {
+  padding: 10px;
+  border-top: 1px solid #ccc; /* Example border */
+  background-color: #f9f9f9; /* Example background */
+  position: relative; /* Keep it in flow but allow z-index */
+  z-index: 1; /* Lower z-index than the modal */
+}
+
+.palette-title {
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+
+.palette-nodes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px; /* Spacing between buttons */
+}
+
+.palette-node-button {
+  padding: 8px 12px;
+  border: 1px solid #007bff;
+  background-color: #e7f3ff;
+  color: #0056b3;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.palette-node-button:hover {
+  background-color: #cce5ff;
+}
+
+.palette-message {
+  width: 100%; /* Take full width in the flex container */
+  text-align: center;
+  color: #555;
+  margin-top: 10px;
+}
+
+/* Edge styling (assuming you have these classes) */
+.correct-edge .react-flow__edge-path {
+  stroke: #28a745; /* Green */
+  stroke-width: 2;
+}
+
+.incorrect-edge .react-flow__edge-path {
+  stroke: #dc3545; /* Red */
+  stroke-width: 2;
+  stroke-dasharray: 5, 5; /* Dashed line for incorrect */
+}
+
+/* Optional: Style for the completion banner */
+.completion-banner {
+  background-color: #28a745; /* Green background */
+  color: white;
+  text-align: center;
+  padding: 10px;
+  font-weight: bold;
+  position: absolute; /* Position it relative to puzzle-app-container */
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10; /* Above canvas but below modal */
+  border-radius: 5px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* Basic styling for the H3 title */
+h3 {
+    text-align: center;
+    margin: 10px 0;
+}
