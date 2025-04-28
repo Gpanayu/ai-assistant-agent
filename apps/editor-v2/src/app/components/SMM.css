@@ -1,0 +1,55 @@
+/* Import this CSS file into your GraphComponent.jsx or App.js */
+
+/* Ensure the container has dimensions */
+.my-react-flow-graph {
+    background-color: #f8f8f8; /* Example background */
+  }
+  
+  /* Default node style (via className) */
+  .react-flow__node.unchecked {
+    background-color: #e0e0e0; /* Light grey */
+    border: 1px solid #bdbdbd;
+    color: #333;
+    border-radius: 4px;
+    font-size: 12px; /* Adjust font size */
+    padding: 5px 10px;
+  }
+  
+  /* Style for nodes marked as 'in progress' */
+  .react-flow__node.checked1 {
+    background-color: #ffeb3b; /* Yellow */
+    border: 1px solid #fbc02d;
+    color: #444;
+    border-radius: 4px;
+    font-size: 12px;
+    padding: 5px 10px;
+  }
+  
+  /* Style for nodes marked as 'completed' */
+  .react-flow__node.checked2 {
+    background-color: #81c784; /* Green */
+    border: 1px solid #4caf50;
+    color: #fff;
+    border-radius: 4px;
+    font-size: 12px;
+    padding: 5px 10px;
+  }
+  
+  /* Optional: Hover effect */
+  .react-flow__node.hovered {
+    box-shadow: 0 0 10px rgba(0, 0, 255, 0.5);
+    cursor: pointer;
+  }
+  
+  /* Style the node label if needed */
+  .react-flow__node .react-flow__node-label {
+    /* Add styles if you customize the label rendering */
+  }
+  
+  /* Edge styling (optional) */
+  .react-flow__edge {
+    /* path {
+      stroke-width: 1.5;
+      stroke: #888;
+    } */
+  }
