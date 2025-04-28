@@ -1,0 +1,257 @@
+/* --- Base Modal Styles (can be shared or adapted from previous modal) --- */
+.collab-modal-overlay {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6); /* Slightly darker overlay */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1010; /* Ensure it's above other content */
+  }
+  
+  .collab-modal-content {
+    background-color: #fff; /* White background */
+    color: #333; /* Dark text */
+    padding: 25px 35px;
+    border-radius: 8px;
+    border: 1px solid #ccc; /* Border around the modal */
+    width: 90%;
+    max-width: 750px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    position: relative;
+  }
+  
+  .collab-modal-content h1 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    font-size: 1.8em;
+    font-weight: normal;
+    color: #000;
+    border-bottom: 1px solid #eee; /* Light separator */
+    padding-bottom: 15px;
+  }
+  
+  /* --- Section Styles --- */
+  .collab-modal-section {
+    margin-bottom: 25px;
+  }
+  
+  .collab-section-title {
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #444;
+    margin-top: 0;
+    margin-bottom: 8px;
+  }
+  
+  .collab-request-text {
+    font-size: 1em;
+    color: #555;
+    margin-bottom: 0;
+  }
+  
+  
+  /* --- Time Allocation Slider --- */
+  .collab-slider-container {
+    position: relative;
+    padding-top: 15px; /* Space for the value above */
+  }
+  
+  .collab-time-slider {
+    width: 100%;
+    cursor: pointer;
+    height: 8px;
+    background: #ddd; /* Track background */
+    border-radius: 4px;
+    appearance: none; /* Override default look */
+    -webkit-appearance: none;
+  }
+  
+  /* Styling the thumb (the draggable circle) */
+  .collab-time-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    background: #007bff; /* Blue thumb */
+    border-radius: 50%;
+    cursor: pointer;
+    margin-top: -5px; /* Center thumb vertically */
+  }
+  
+  .collab-time-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    background: #007bff;
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+  }
+  
+  /* Slider Labels */
+  .collab-slider-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85em;
+    color: #777;
+    margin-top: 8px;
+    position: relative; /* For positioning markers */
+  }
+  
+  .collab-current-time-marker {
+      position: absolute;
+      transform: translateX(-50%); /* Center the marker */
+      font-weight: bold;
+      color: #333;
+      background-color: #fff;
+      padding: 0 3px;
+      top: -20px; /* Position above the track */
+  }
+  
+  /* Separate display for the current value above the slider */
+  .collab-current-time-display {
+    position: absolute;
+    top: -5px; /* Position it above the slider */
+    left: calc( ( (var(--value, 2) - 1) / (var(--max, 5) - 1) ) * 100% ); /* Calculate position */
+    transform: translateX(-50%); /* Center it */
+    font-size: 0.9em;
+    font-weight: bold;
+    color: #007bff;
+    background: #fff;
+    padding: 1px 4px;
+  }
+  /* Note: Calculating slider value position purely in CSS is tricky without JS updating a CSS variable.
+     The marker above is simpler. The `.collab-current-time-display` requires setting CSS variables
+     --value and --max via JS or inline style if you want it perfectly aligned.
+     The marker example is generally easier. Let's stick with the marker logic shown in the JSX.
+  */
+  
+  
+  /* --- Completion Percent Chart --- */
+  .collab-completion-subtitle {
+    font-size: 0.9em;
+    color: #666;
+    margin-bottom: 10px;
+  }
+  
+  .collab-completion-chart {
+      padding-left: 50px; /* Space for y-axis label */
+      position: relative;
+  }
+  
+  .collab-completion-chart::before { /* Simulate Y-axis Label */
+      content: "Completion %";
+      position: absolute;
+      left: 0;
+      top: 10px; /* Adjust alignment */
+      transform: rotate(-90deg) translateX(-60%); /* Rotate and position */
+      transform-origin: left top;
+      font-size: 0.9em;
+      color: #666;
+      white-space: nowrap;
+  
+  }
+  
+  .collab-completion-bar-container {
+    width: 100%;
+    height: 25px;
+    background-color: #e9ecef; /* Light grey background */
+    border-radius: 4px;
+    overflow: hidden; /* Ensure inner bar stays within bounds */
+    position: relative; /* For text inside */
+  }
+  
+  .collab-completion-bar {
+    height: 100%;
+    background-color: #adb5bd; /* Grey bar color */
+    color: #fff; /* Text color inside bar */
+    display: flex;
+    align-items: center;
+    justify-content: flex-end; /* Align text to the right */
+    padding-right: 10px;
+    font-size: 0.9em;
+    font-weight: bold;
+    border-radius: 4px 0 0 4px; /* Slightly rounded left edge */
+    transition: width 0.5s ease-in-out;
+  }
+  
+  /* X-axis Labels */
+  .collab-completion-axis {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8em;
+    color: #888;
+    margin-top: 5px;
+    padding-right: 15px; /* Align with bar end */
+  }
+  
+  /* Legend */
+  .collab-completion-legend {
+    margin-top: 10px;
+    font-size: 0.85em;
+    color: #555;
+    display: flex;
+    gap: 15px;
+  }
+  
+  .collab-legend-item {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%; /* Circular legend markers */
+    margin-right: 5px;
+    vertical-align: middle;
+  }
+  .collab-legend-item.prediction { background-color: #adb5bd; } /* Grey */
+  .collab-legend-item.completed { background-color: #007bff; } /* Blue */
+  
+  
+  /* --- Focus Section --- */
+  .collab-focus-section p {
+    background-color: #f8f9fa; /* Very light grey background */
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 15px;
+    font-size: 0.95em;
+    color: #495057;
+    line-height: 1.5;
+  }
+  
+  /* --- Footer Buttons --- */
+  .collab-modal-footer {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #eee; /* Light separator */
+    display: flex;
+    gap: 10px; /* Space between buttons */
+  }
+  
+  .collab-button {
+    flex-grow: 1; /* Make buttons share space */
+    padding: 12px 20px;
+    border: none;
+    border-radius: 5px;
+    font-size: 1em;
+    cursor: pointer;
+    transition: background-color 0.2s ease, opacity 0.2s ease;
+    text-align: center;
+  }
+  
+  .collab-button-help {
+    background-color: #007bff; /* Blue */
+    color: white;
+  }
+  .collab-button-help:hover {
+    background-color: #0056b3;
+  }
+  
+  .collab-button-nohelp {
+    background-color: #6c757d; /* Grey */
+    color: white;
+  }
+  .collab-button-nohelp:hover {
+    background-color: #5a6268;
+  }
