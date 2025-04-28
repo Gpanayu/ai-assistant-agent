@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo,useEffect } from 'react';
 import {
   ReactFlow,
   MiniMap,
@@ -18,7 +18,7 @@ const puzzleNodeIds = [
   "cook_time_helper", "restock_inventory", "cook_order",
   "add_to_queue", "average_cook_time"
 ];
-
+import DrawModal from './modals/DrawModeal'; 
 
 const correctLinksSet = new Set(
   [
@@ -65,16 +65,34 @@ const correctLinksSet = new Set(
 // };
 
 
-// Canvas starts empty
-const initialNodes: any[] = [];
+const initialNodes = [
+  {
+    id: 'Customer',
+    position: { x: 100, y: 200 }, 
+    data: { label: 'Customer' },
+    type: 'default', 
+  },
+  {
+    id: 'Restaurant',
+    position: { x: 500, y: 200 },
+    data: { label: 'Restaurant' },
+    type: 'default', 
+  },
+];
+const initialAvailableNodes = puzzleNodeIds.filter(
+  id => id !== 'Customer' && id !== 'Restaurant'
+);
+
+
 // const initialEdges = [];
 
 export default function PuzzleApp() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [correctEdges, setCorrectEdges, onCorrectEdgesChange] = useEdgesState([]);
   const [incorrectEdges, setIncorrectEdges, onIncorrectEdgesChange] = useEdgesState<{ source: string; target: string; className?: string }[]>([]);
+  const [modalOpen, setModalOpen] = useState(false);
 
-  const [availableNodes, setAvailableNodes] = useState(puzzleNodeIds);
+  const [availableNodes, setAvailableNodes] = useState(initialAvailableNodes);
 
   const allEdges = useMemo(() => [...correctEdges, ...incorrectEdges], [correctEdges, incorrectEdges]);
 
@@ -114,7 +132,12 @@ export default function PuzzleApp() {
    );
 
   const isPuzzleComplete = useMemo(() => correctEdges.length === correctLinksSet.size, [correctEdges]);
-
+  useEffect(() => {
+    if (isPuzzleComplete) {
+      console.log("Puzzle complete! Opening modal."); 
+      setModalOpen(true);
+    }
+  }, [isPuzzleComplete]);
   return (
     <div className="puzzle-app-container">
        {isPuzzleComplete && (
@@ -122,7 +145,12 @@ export default function PuzzleApp() {
           Puzzle Complete! Well done!
         </div>
       )}
-
+        <h3 >Complete the following graph</h3>
+        {modalOpen && (
+  <div className="modal-overlay">
+    <DrawModal setOpenModal={setModalOpen} />
+  </div>
+)}
       <div className="canvas-container" style={{ height: '500px' }}>
         <ReactFlow
           nodes={nodes}
