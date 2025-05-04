@@ -571,7 +571,7 @@ editor_manager = EditorManager()
 msgs = []
 state = ""
 cursor_positions = {}
-
+draw_states={"A": {"isDone":False}, "B": {"isDone":False}, "C": {"isDone":False}}
 
 @app.get("/", response_class=HTMLResponse)
 def get(request: Request):
@@ -794,6 +794,26 @@ def get_editors():
     }
     return event
 
+@app.post("/DrawDone")
+def draw_done(id: str, completed_time: int, remaining_time: int):
+    if id in draw_states:
+        draw_states[id]["isDone"] = True
+        draw_states[id]["completed_time"] = completed_time
+    
+    
+    if all([draw_states[key]["isDone"] for key in draw_states]):
+        event = {
+            "event": "draw",
+            "payload": {"status": "done","draw_states": draw_states},
+        }
+        asyncio.run(socketManager.broadcast(json.dumps(event)))
+    else:
+        event = {
+            "event": "draw",
+            "payload": {"status": "not_done", "draw_states": draw_states},
+        }
+        asyncio.run(socketManager.broadcast(json.dumps(event)))
+    return {"status": "success"}
 
 @app.get("/lookup/{node}")
 def lookup_description(node):
