@@ -108,7 +108,7 @@ export default function PuzzleApp({id}: DrawProps) {
   });
   const allEdges = useMemo(() => [...correctEdges, ...incorrectEdges], [correctEdges, incorrectEdges]);
   const wsRef = useRef<WebSocket | null>(null);
-  const backendServer = "0.0.0.0";
+  const backendServer = "prime-lab.cs.vt.edu";
   useEffect(() => {
     console.log(id)
     if(id && !wsRef.current) {

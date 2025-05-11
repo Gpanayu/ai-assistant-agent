@@ -4,7 +4,7 @@ import { repositionTooltips } from '@uiw/react-codemirror';
 
 function HelpModal({ isOpen, onClose, id }) {
   const [selectedOption, setSelectedOption] = useState(null);
-  const backendServer='0.0.0.0'
+  const backendServer='prime-lab.cs.vt.edu'
 
   if (!isOpen) {
     return null; // Don't render the modal if it's not open

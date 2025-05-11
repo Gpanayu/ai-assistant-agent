@@ -31,7 +31,7 @@ export default function Editor() {
   const [helpOption, setHelpOption] = useState<string | null>(null);
   const [history, setHistory] = useState([]);
   const [personalCode, setPersonalCode] = useState("# Hello world\nprint('hello world')");
-  const backendServer = "0.0.0.0";
+  const backendServer = "prime-lab.cs.vt.edu";
   const wsRef = useRef<WebSocket | null>(null);
   const id = localStorage.getItem('participant-id') || 'D';
   const storedUserId = id.replace(/"/g, '');

@@ -26,7 +26,7 @@ const CollaborativeOpportunityModal = ({ onClose, predictions, context, id }) =>
     },
   };
 
-  const backendServer = '0.0.0.0'; // Note: For client-side fetch, '0.0.0.0' might not be the intended server address. Consider 'localhost' or a specific IP/domain.
+  const backendServer = 'prime-lab.cs.vt.edu'; // Note: For client-side fetch, 'prime-lab.cs.vt.edu' might not be the intended server address. Consider 'localhost' or a specific IP/domain.
 
   const startHelpSession = async (helper, time, hint = 'this is hint') => {
     try {
