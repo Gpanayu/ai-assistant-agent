@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo,useEffect } from 'react';
+import React, { useState, useCallback, useMemo,useEffect, useRef } from 'react';
 import {
   ReactFlow,
   MiniMap,
@@ -12,11 +12,12 @@ import '@xyflow/react/dist/style.css';
 import './puzzleStyles.css'; 
 const puzzleNodeIds = [
   "Customer", "Restaurant",
-  "view_menu", "create_order", "clear_order",
-  "view_order_summary", "add_to_order", "remove_from_order",
-  "calculate_order_cost", "get_receipt", "inventory_helper",
-  "cook_time_helper", "restock_inventory", "cook_order",
-  "add_to_queue", "average_cook_time"
+  "view_menu", "create_order",  "inventory_helper", "restock_inventory",
+  // "clear_order",
+  // "view_order_summary", "add_to_order", "remove_from_order",
+  // "calculate_order_cost", "get_receipt",
+  // "cook_time_helper", "cook_order",
+  // "add_to_queue", "average_cook_time"
 ];
 import DrawModal from './modals/DrawModeal'; 
 
@@ -24,20 +25,19 @@ const correctLinksSet = new Set(
   [
     { source: "Customer", target: "view_menu" },
     { source: "Customer", target: "create_order" },
-    { source: "Restaurant", target: "inventory_helper" },
-    { source: "Restaurant", target: "restock_inventory" },
-    { source: "Restaurant", target: "cook_time_helper" },
-    { source: "create_order", target: "view_order_summary" },
-    { source: "create_order", target: "calculate_order_cost" },
-    { source: "create_order", target: "clear_order" },
-    { source: "create_order", target: "add_to_queue" },
-    { source: "view_order_summary", target: "get_receipt" },
-    { source: "calculate_order_cost", target: "add_to_order" },
-    { source: "calculate_order_cost", target: "remove_from_order" },
-    { source: "inventory_helper", target: "cook_order" },
-    { source: "cook_time_helper", target: "cook_order" },
-    { source: "add_to_queue", target: "cook_order" },
-    { source: "cook_time_helper", target: "average_cook_time" },
+    // { source: "Restaurant", target: "inventory_helper" },
+    // { source: "Restaurant", target: "restock_inventory" },
+    // { source: "Restaurant", target: "cook_time_helper" },
+    // { source: "create_order", target: "view_order_summary" },
+    // { source: "create_order", target: "calculate_order_cost" },
+    // { source: "create_order", target: "clear_order" },
+    // { source: "create_order", target: "add_to_queue" },
+    // { source: "calculate_order_cost", target: "add_to_order" },
+    // { source: "calculate_order_cost", target: "remove_from_order" },
+    // { source: "inventory_helper", target: "cook_order" },
+    // { source: "cook_time_helper", target: "cook_order" },
+    // { source: "add_to_queue", target: "cook_order" },
+    // { source: "cook_time_helper", target: "average_cook_time" },
   ].map(link => `${link.source}->${link.target}`) 
 );
 
@@ -65,6 +65,7 @@ const correctLinksSet = new Set(
 // };
 
 
+
 const initialNodes = [
   {
     id: 'Customer',
@@ -83,18 +84,75 @@ const initialAvailableNodes = puzzleNodeIds.filter(
   id => id !== 'Customer' && id !== 'Restaurant'
 );
 
+interface DrawProps{
+  id: string;
+}
+export default function PuzzleApp({id}: DrawProps) {
 
-// const initialEdges = [];
-
-export default function PuzzleApp() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [correctEdges, setCorrectEdges, onCorrectEdgesChange] = useEdgesState([]);
   const [incorrectEdges, setIncorrectEdges, onIncorrectEdgesChange] = useEdgesState<{ source: string; target: string; className?: string }[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
 
   const [availableNodes, setAvailableNodes] = useState(initialAvailableNodes);
-
+  const [tasks, setTasks] = useState<any>({
+    "A": {
+        "isDone": false,
+    },
+    "B": {
+        "isDone": false,
+    },
+    "C": {
+        "isDone": false
+    }
+  });
   const allEdges = useMemo(() => [...correctEdges, ...incorrectEdges], [correctEdges, incorrectEdges]);
+  const wsRef = useRef<WebSocket | null>(null);
+  const backendServer = "0.0.0.0";
+  useEffect(() => {
+    console.log(id)
+    if(id && !wsRef.current) {
+      console.log(`Raw value from localStorage: "${id}"`);    
+        const wsUrl = `wss://${backendServer}:8000/ws/${id}`;
+        console.log("WebSocket URL:", wsUrl);
+        const ws = new WebSocket(wsUrl);
+        wsRef.current = ws;
+        ws.onopen = () => {
+          console.log("WebSocket connection established");
+      };
+      ws.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          console.log("Received message:", data);
+          if(data.event==='draw'){
+            if (data.payload.status === 'done') {
+              console.log("All users have completed the puzzle");
+              setTasks(data.payload.draw_states);
+              setModalOpen(true);
+              ws.close();
+            } else {
+              console.log("Someone is remaining to complete the puzzle");
+              setTasks(data.payload.draw_states);
+              console.log("tastssd " )
+              console.log(data.payload.draw_states);
+              console.log("Tasks: ", tasks);
+              Object.entries(data.payload.draw_states).forEach(([user, state]) => {
+              console.log(`User ${user} isDone: ${state.isDone}`);
+              setModalOpen(true);
+
+              });
+            }}
+          }
+    
+        ws.onclose = (event) => { 
+            console.log(`WebSocket connection closed: Code=${event.code}, Reason=${event.reason}, WasClean=${event.wasClean}`);
+        };
+
+        ws.onerror = (error) => {
+            console.error("WebSocket specific error event:", error);
+        };
+
+    }
+  }, []);
 
   const addNodeToCanvas = useCallback((nodeIdToAdd) => {
     setAvailableNodes((prev) => prev.filter(id => id !== nodeIdToAdd));
@@ -133,10 +191,33 @@ export default function PuzzleApp() {
 
   const isPuzzleComplete = useMemo(() => correctEdges.length === correctLinksSet.size, [correctEdges]);
   useEffect(() => {
-    if (isPuzzleComplete) {
-      console.log("Puzzle complete! Opening modal."); 
-      setModalOpen(true);
-    }
+    const sendCompletionStatus = async () => {
+      if (isPuzzleComplete) {
+        console.log("Puzzle complete! Opening modal."); 
+        try {
+          const completedTime = 0; // Replace with actual time
+          const remainingTime = 0; // Replace with actual time
+          const url = `https://${backendServer}:8000/DrawDone?id=${encodeURIComponent(id)}&completed_time=${completedTime}&remaining_time=${remainingTime}`;
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ id:id,completed_time:0,remaining_time: 0 }),
+          });
+          if (!response.ok) {
+            throw new Error('Network response was not ok');
+          }
+          const data = await response.json();
+          console.log("Response from server:", data);   
+        } catch (error) {
+          console.error("Error sending completion status:", error);
+        }
+        // setModalOpen(true);
+      }
+    };
+
+    sendCompletionStatus();
   }, [isPuzzleComplete]);
   return (
     <div className="puzzle-app-container">
@@ -148,10 +229,11 @@ export default function PuzzleApp() {
         <h3 >Complete the following graph</h3>
         {modalOpen && (
   <div className="modal-overlay">
-    <DrawModal setOpenModal={setModalOpen} />
+    <DrawModal setOpenModal={setModalOpen} tasks={tasks} />
   </div>
 )}
       <div className="canvas-container" style={{ height: '500px' }}>
+        
         <ReactFlow
           nodes={nodes}
           edges={allEdges}
@@ -165,7 +247,6 @@ export default function PuzzleApp() {
           <Background variant="dots" gap={12} size={1} />
         </ReactFlow>
       </div>
-
       <div className="palette-container">
         <h3 className="palette-title">Available Nodes</h3>
         <div className="palette-nodes">
@@ -189,3 +270,4 @@ export default function PuzzleApp() {
     </div>
   );
 }
+
