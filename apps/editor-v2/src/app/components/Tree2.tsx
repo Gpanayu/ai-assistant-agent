@@ -113,7 +113,7 @@ export default function PuzzleApp({id}: DrawProps) {
     console.log(id)
     if(id && !wsRef.current) {
       console.log(`Raw value from localStorage: "${id}"`);    
-        const wsUrl = `wss://${backendServer}:8000/ws/${id}`;
+        const wsUrl = `ws://${backendServer}:8000/ws/${id}`;
         console.log("WebSocket URL:", wsUrl);
         const ws = new WebSocket(wsUrl);
         wsRef.current = ws;
@@ -197,7 +197,7 @@ export default function PuzzleApp({id}: DrawProps) {
         try {
           const completedTime = 0; // Replace with actual time
           const remainingTime = 0; // Replace with actual time
-          const url = `https://${backendServer}:8000/DrawDone?id=${encodeURIComponent(id)}&completed_time=${completedTime}&remaining_time=${remainingTime}`;
+          const url = `http://${backendServer}:8000/DrawDone?id=${encodeURIComponent(id)}&completed_time=${completedTime}&remaining_time=${remainingTime}`;
           const response = await fetch(url, {
             method: 'POST',
             headers: {

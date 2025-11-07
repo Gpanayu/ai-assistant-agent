@@ -27,7 +27,7 @@ const jumpToFunction = (nodeId) => {
 };
 
 
-const backendServer = 'prime-lab.cs.vt.edu'; 
+const backendServer = 'localhost'; 
 const animalId = localStorage.getItem("participant-id") || "D"; 
 const storedUserId = animalId.replace(/"/g, '');
 
@@ -148,7 +148,7 @@ const GraphComponent = () => {
 
     useEffect(() => {
         if (!ws.current || ws.current.readyState === WebSocket.CLOSED) {
-            const wsUrl = `wss://${backendServer}:8000/ws/${storedUserId}`;
+            const wsUrl = `ws://${backendServer}:8000/ws/${storedUserId}`;
             console.log(`Attempting to connect WebSocket: ${wsUrl}`);
             ws.current = new WebSocket(wsUrl);
 
@@ -275,7 +275,7 @@ const GraphComponent = () => {
             );
 
             try {
-                const response = await fetch(`https://${backendServer}:8000/lookup/${node.id}`);
+                const response = await fetch(`http://${backendServer}:8000/lookup/${node.id}`);
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const data = await response.json();
                 console.log(`Tooltip data for ${node.id}:`, data);

@@ -31,7 +31,7 @@ export default function Editor() {
   const [helpOption, setHelpOption] = useState<string | null>(null);
   const [history, setHistory] = useState([]);
   const [personalCode, setPersonalCode] = useState("# Hello world\nprint('hello world')");
-  const backendServer = "prime-lab.cs.vt.edu";
+  const backendServer = "localhost";
   const wsRef = useRef<WebSocket | null>(null);
   const id = localStorage.getItem('participant-id') || 'D';
   const storedUserId = id.replace(/"/g, '');
@@ -73,7 +73,7 @@ export default function Editor() {
   useEffect(() => {
   if (storedUserId && !wsRef.current) {
     console.log(`Raw value from localStorage: "${storedUserId}"`);    
-      const wsUrl = `wss://${backendServer}:8000/ws/${storedUserId}`;
+      const wsUrl = `ws://${backendServer}:8000/ws/${storedUserId}`;
       console.log("WebSocket URL:", wsUrl);
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
@@ -154,7 +154,7 @@ export default function Editor() {
 // IMPLEMENT SPINNER
     // setIconClass("fa-solid fa-spinner");
   
-    await fetch(`https://${backendServer}:8000/testFunction`, {
+    await fetch(`http://${backendServer}:8000/testFunction`, {
       method: 'POST',
       headers: {
         Accept: 'application/json',
@@ -177,7 +177,7 @@ export default function Editor() {
     const channel=storedUserId;
 
     try {
-      await fetch(`https://${backendServer}:8000/test`, {
+      await fetch(`http://${backendServer}:8000/test`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -204,7 +204,7 @@ export default function Editor() {
 
 const helpMe = () => {
   openHelp();
-  fetch(`https://${backendServer}:8000/helpMe`, {
+  fetch(`http://${backendServer}:8000/helpMe`, {
     method: 'POST',
     headers: {
       Accept: 'application/json',
@@ -367,10 +367,10 @@ const helpMe = () => {
   )
 }
 // Y.js Collaboration Extension
-
 const ydoc = new Y.Doc();
 const provider = new WebrtcProvider('prime-collab-room-demo', ydoc, {
-  signaling: ['wss://prime-lab.cs.vt.edu:4444'],
+  // signaling: ['wss://prime-lab.cs.vt.edu:4444'],
+    signaling: ['http://localhost:4444'], //this is for local testing
   peerOpts: {
     config: {
       iceServers: [

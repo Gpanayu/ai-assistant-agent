@@ -26,11 +26,11 @@ const CollaborativeOpportunityModal = ({ onClose, predictions, context, id }) =>
     },
   };
 
-  const backendServer = 'prime-lab.cs.vt.edu'; // Note: For client-side fetch, 'prime-lab.cs.vt.edu' might not be the intended server address. Consider 'localhost' or a specific IP/domain.
+  const backendServer = 'localhost'; // Note: For client-side fetch, 'prime-lab.cs.vt.edu' might not be the intended server address. Consider 'localhost' or a specific IP/domain.
 
   const startHelpSession = async (helper, time, hint = 'this is hint') => {
     try {
-      const response = await fetch(`https://${backendServer}:8000/StartHelpSession`, {
+      const response = await fetch(`http://${backendServer}:8000/StartHelpSession`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

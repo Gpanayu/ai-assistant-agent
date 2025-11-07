@@ -4,7 +4,7 @@ import { repositionTooltips } from '@uiw/react-codemirror';
 
 function HelpModal({ isOpen, onClose, id }) {
   const [selectedOption, setSelectedOption] = useState(null);
-  const backendServer='prime-lab.cs.vt.edu'
+  const backendServer='localhost'
 
   if (!isOpen) {
     return null; // Don't render the modal if it's not open
@@ -15,7 +15,7 @@ function HelpModal({ isOpen, onClose, id }) {
   };
 
   const handleSubmit = () => {
-    fetch(`https://${backendServer}:8000/replyToHelp`, {
+    fetch(`http://${backendServer}:8000/replyToHelp`, {
       method: 'POST',
       headers: {
         Accept: 'application/json',
