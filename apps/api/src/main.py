@@ -232,14 +232,14 @@ class EditorManager:
         self.individual = {}
         self.profiles = {}
         self.help_queue = []
-        # client = genai.Client(api_key="AIzaSyARS0PV4GFFT_kNxzb46oCuVK9RXabdAaU")
+        # client = genai.Client(api_key="")
         # self.client = client
         client = OpenAI(
             api_key="",
             base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
         )
         self.client = client
-        # openai.api_key = "AIzaSyARS0PV4GFFT_kNxzb46oCuVK9RXabdAaU"
+        # openai.api_key = ""
         self.message_history = [
             {"role": "system", "content": ("Keep all responses 1 sentence long. ")},
             {
