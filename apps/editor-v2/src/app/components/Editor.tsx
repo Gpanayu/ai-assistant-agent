@@ -797,7 +797,29 @@ def add_to_order(customer, order_id, menu, item):
               <Panel defaultSize={50} minSize={20}> {/* Adjust defaultSize as needed */}
                 <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                   <Group justify="space-between" p="xs" style={{ borderBottom: '1px solid #ccc' }}>
-                    <Title order={3}>{helperAssistActive ? "Tom's Workspace (Live)" : "Team Editor"}</Title>
+                    <Group gap="xs" align="center">
+                      {helperAssistActive && (
+                        <div
+                          style={{
+                            width: "30px",
+                            height: "30px",
+                            borderRadius: "50%",
+                            background: "#334155",
+                            color: "white",
+                            fontWeight: 700,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: "14px",
+                            boxSizing: "border-box",
+                            border: isTomInterruptible ? "3px solid #22c55e" : "3px solid #ef4444"
+                          }}
+                        >
+                          T
+                        </div>
+                      )}
+                      <Title order={3}>{helperAssistActive ? "Tom's Workspace (Live)" : "Team Editor"}</Title>
+                    </Group>
                   </Group>
                   <div style={{ flexGrow: 1, overflow: 'auto', position: 'relative' }}> {/* Allow CodeMirror to take remaining space */}
                     <CodeMirror
@@ -918,7 +940,7 @@ def add_to_order(customer, order_id, menu, item):
                           Tom is blocked on dictionary usage in <code>add_to_order</code>.
                         </div>
                         <Group gap="xs">
-                          <Button size="compact-xs" onClick={startHelpingTom}>Go Help Tom</Button>
+                          <Button size="compact-xs" onClick={startHelpingTom}>Take me there</Button>
                           <Button size="compact-xs" variant="light" onClick={() => setShowHelpTomSuggestion(false)}>
                             Dismiss
                           </Button>
