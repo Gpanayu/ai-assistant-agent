@@ -818,7 +818,7 @@ def add_to_order(customer, order_id, menu, item):
                           T
                         </div>
                       )}
-                      <Title order={3}>{helperAssistActive ? "Tom's Workspace (Live)" : "Team Editor"}</Title>
+                      <Title order={3}>{helperAssistActive ? "Tom's Help Request" : "Team Editor"}</Title>
                     </Group>
                   </Group>
                   <div style={{ flexGrow: 1, overflow: 'auto', position: 'relative' }}> {/* Allow CodeMirror to take remaining space */}
@@ -913,7 +913,7 @@ def add_to_order(customer, order_id, menu, item):
                 <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                   {/* Button Group - should not grow or shrink */}
                   <Group justify="space-between" p="xs" style={{ borderBottom: '1px solid #ccc', flexShrink: 0 }}>
-                    <Title order={3}>{helperAssistActive ? "Helper Workspace" : "Personal Editor"}</Title>
+                    <Title order={3}>Personal Editor</Title>
                     <Group>
                       <Button onClick={testCodePlayground} size='compact-xs'>Test</Button>
                       <Button onClick={runPersonalCode} size='compact-xs'>Run</Button>
