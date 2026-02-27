@@ -14,11 +14,36 @@ import GraphComponent from './SMM';
 import { Background, ReactFlowProvider } from '@xyflow/react';
 import CollaborativeOpportunityModal from './modals/CollabModal';
 import { Extension, StateField, EditorState } from "@codemirror/state";
-import { EditorView, Decoration } from "@codemirror/view";
+import { EditorView, Decoration, WidgetType } from "@codemirror/view";
 import { createPersonalEditorUpdateExtension } from './modals/extension';
 import HelpSessionStartedModal from './modals/HelpSessionModal';
 
-const REFERENCE_HIGHLIGHT_LINES = [2, 3, 6, 7, 8];
+const REFERENCE_HIGHLIGHT_LINES = [2, 3, 5, 6, 7, 8, 9];
+const ASSIST_ANCHOR = "def add_to_order";
+
+class PeerAssistWidget extends WidgetType {
+  constructor(private readonly text: string) {
+    super();
+  }
+
+  toDOM() {
+    const span = document.createElement("span");
+    span.style.marginLeft = "10px";
+    span.style.padding = "2px 8px";
+    span.style.borderRadius = "999px";
+    span.style.background = "#ede9fe";
+    span.style.border = "1px solid #7c3aed";
+    span.style.color = "#5b21b6";
+    span.style.fontSize = "11px";
+    span.style.fontWeight = "700";
+    span.textContent = this.text;
+    return span;
+  }
+
+  ignoreEvent() {
+    return true;
+  }
+}
 
 function buildReferenceDecorations(state: EditorState) {
   const decorations = [];
@@ -46,6 +71,42 @@ const referenceHighlightField = StateField.define({
 const referenceHighlightTheme = EditorView.theme({
   ".cm-line.cm-reference-highlight": {
     backgroundColor: "#fff7d6",
+  },
+});
+
+function buildAssistDecoration(state: EditorState, message: string) {
+  const anchor = state.doc.toString().indexOf(ASSIST_ANCHOR);
+  if (anchor < 0) return Decoration.none;
+  const anchorEnd = anchor + ASSIST_ANCHOR.length;
+  return Decoration.set([
+    Decoration.widget({
+      widget: new PeerAssistWidget(message),
+      side: 1,
+    }).range(anchorEnd),
+  ]);
+}
+
+function createAssistField(message: string) {
+  return StateField.define({
+    create(state) {
+      return buildAssistDecoration(state, message);
+    },
+    update(decorations, tr) {
+      if (!tr.docChanged) return decorations.map(tr.changes);
+      return buildAssistDecoration(tr.state, message);
+    },
+    provide: (f) => EditorView.decorations.from(f),
+  });
+}
+
+const tomAssistField = createAssistField("Pete is here. This is where Tom needs your help.");
+const helperAssistField = createAssistField("Peer-assist focus from Tom's workspace.");
+const purpleCaretTheme = EditorView.theme({
+  "&.cm-focused .cm-cursor": {
+    borderLeftColor: "#7c3aed",
+  },
+  "&.cm-focused .cm-selectionBackground, ::selection": {
+    backgroundColor: "#ddd6fe",
   },
 });
 
@@ -326,17 +387,20 @@ def remove_from_order(customer: Customer, order_id: int, menu: Menu, item: str):
     pass
 `;
   const peteReferenceCode = `# Pete solved a similar dictionary-pattern task earlier
-def add_to_order(order_book, order_id, menu, item):
-    if order_id not in order_book:
-        return "No order found"
+def inventory_helper(restaurant, item):
+    if item not in restaurant.inventory:
+        return False
+    if restaurant.inventory[item] <= 0:
+        return False
+    restaurant.inventory[item] -= 1
+    return True
 
-    if item not in menu:
-        return "Not on menu"
-
-    order = order_book[order_id]
-    order["items"].append(item)
-    order["cost"] += menu[item]
-    return f"Added {item}: {menu[item]}"
+def restock_inventory(restaurant, item, amount):
+    if item in restaurant.inventory:
+        restaurant.inventory[item] += amount
+        print(f"Restocked {item}. New quantity: {restaurant.inventory[item]}")
+    else:
+        print(f"{item} not found in inventory.")
 `;
   const peteTomAssistStarter = `# Pete helper draft for Tom's method
 def add_to_order(customer, order_id, menu, item):
@@ -352,7 +416,7 @@ def add_to_order(customer, order_id, menu, item):
     order.cost += menu.dishes[item]
     print(f"Added {item}: {menu.dishes[item]}")
 `;
-  const tomMethodSignature = "def add_to_order";
+  const tomMethodSignature = ASSIST_ANCHOR;
 
   const [code, setCode] = useState(defaultCode);
   const [isTomInterruptible] = useState(true);
@@ -659,7 +723,12 @@ def add_to_order(customer, order_id, menu, item):
                     <CodeMirror
                       height="100%"
                       value={code}
-                      extensions={[python(), yCollab(ytext, provider.awareness)]}
+                      extensions={[
+                        python(),
+                        yCollab(ytext, provider.awareness),
+                        purpleCaretTheme,
+                        ...(helperAssistActive ? [tomAssistField] : []),
+                      ]}
                       style={{ height: '100%' }}
                       onCreateEditor={(view) => {
                         teamEditorRef.current = view;
@@ -769,7 +838,7 @@ def add_to_order(customer, order_id, menu, item):
                             height="100%"
                             value={personalCode}
                             onChange={handlePersonalCodeChange}
-                            extensions={personalEditorExtensions}
+                            extensions={[...personalEditorExtensions, purpleCaretTheme, helperAssistField]}
                             style={{ height: "100%" }}
                           />
                         </div>
