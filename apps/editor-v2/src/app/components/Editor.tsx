@@ -852,11 +852,20 @@ def add_to_order(customer, order_id, menu, item):
                         </div>
                         <div>
                           <div style={{ fontSize: "12px", fontWeight: 700 }}>Tom</div>
-                          <div style={{ fontSize: "11px", color: isTomInterruptible ? "#16a34a" : "#dc2626" }}>
-                            {isTomInterruptible
-                              ? "Interruptible. Tom tags you for help."
-                              : "Do not interrupt"}
-                          </div>
+                          {isTomInterruptible ? (
+                            <>
+                              <div style={{ fontSize: "11px", color: "#16a34a" }}>
+                                Interruptible.
+                              </div>
+                              <div style={{ fontSize: "11px", color: "#111827" }}>
+                                Tom tags you for help.
+                              </div>
+                            </>
+                          ) : (
+                            <div style={{ fontSize: "11px", color: "#dc2626" }}>
+                              Do not interrupt
+                            </div>
+                          )}
                           {helperAssistActive && (
                             <div style={{ fontSize: "11px", color: "#334155" }}>
                               Live focus: add_to_order
