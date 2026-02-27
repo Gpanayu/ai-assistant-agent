@@ -167,17 +167,18 @@ export default function Editor() {
     setIsSessionStartedModalOpen(false);
   };
 
-  const handleChange = (value: string | undefined) => {
-    setCode(value || "");
+  // helpee side
+  // const handleChange = (value: string | undefined) => {
+  //   setCode(value || "");
 
-    if (typingTimer.current) {
-      clearTimeout(typingTimer.current);
-    }
+  //   if (typingTimer.current) {
+  //     clearTimeout(typingTimer.current);
+  //   }
 
-    typingTimer.current = setTimeout(() => {
-      setShowSuggestion(true);
-    }, 2000); // 2 seconds after typing
-  };
+  //   typingTimer.current = setTimeout(() => {
+  //     setShowSuggestion(true);
+  //   }, 2000); // 2 seconds after typing
+  // };
 
   useEffect(() => {
     if (storedUserId && !wsRef.current) {
@@ -371,15 +372,15 @@ export default function Editor() {
                           clearTimeout(typingTimer.current);
                         }
 
-                        typingTimer.current = setTimeout(() => {
-                          if (!editorRef.current) return;
+                        // typingTimer.current = setTimeout(() => {
+                        //   if (!editorRef.current) return;
 
-                          const pos = editorRef.current.state.selection.main.head;
+                        //   const pos = editorRef.current.state.selection.main.head;
 
-                          editorRef.current.dispatch({
-                            effects: addPeteEffect.of(pos)
-                          });
-                        }, 2000);
+                        //   editorRef.current.dispatch({
+                        //     effects: addPeteEffect.of(pos)
+                        //   });
+                        // }, 2000);
                       }}
                     />
                     {showStatusPopup && (
