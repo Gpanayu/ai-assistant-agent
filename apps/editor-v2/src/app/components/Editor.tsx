@@ -22,9 +22,147 @@ import { EditorView, ViewPlugin, ViewUpdate } from "@codemirror/view";
 import { Extension } from "@codemirror/state";
 import {createPersonalEditorUpdateExtension} from './modals/extension';
 import HelpSessionStartedModal from './modals/HelpSessionModal';
+
+
+import { Decoration, WidgetType } from "@codemirror/view";
+import { StateField, StateEffect } from "@codemirror/state";
+
+// class PeteWidget extends WidgetType {
+//   toDOM(view: EditorView) {
+//     const span = document.createElement("span");
+
+//     span.style.background = "#2d2d2d";
+//     span.style.color = "white";
+//     span.style.padding = "2px 6px";
+//     span.style.marginLeft = "8px";
+//     span.style.borderRadius = "6px";
+//     span.style.fontSize = "12px";
+//     span.style.cursor = "pointer";
+
+//     span.innerHTML =
+//       "👨‍💻 Pete can help with <b>loop logic</b>";
+
+//     span.onclick = () => {
+//       alert("Pete is available! (Demo)");
+//     };
+
+//     return span;
+//   }
+// }
+
+
+
+// class PeteWidget extends WidgetType {
+//   constructor(private onClick: () => void) {
+//     super();
+//   }
+
+//   toDOM(view: EditorView) {
+//     const span = document.createElement("span");
+
+//     span.style.background = "#2d2d2d";
+//     span.style.color = "white";
+//     span.style.padding = "2px 6px";
+//     span.style.marginLeft = "8px";
+//     span.style.borderRadius = "6px";
+//     span.style.fontSize = "12px";
+//     span.style.cursor = "pointer";
+
+//     span.innerHTML =
+//       "👨‍💻 Pete can help with <b>loop logic</b>";
+
+//     span.onclick = this.onClick;
+
+//     return span;
+//   }
+// }
+
+class PeteWidget extends WidgetType {
+  toDOM(view: EditorView) {
+    const span = document.createElement("span");
+
+    span.id = "pete-inline-widget"; // 👈 IMPORTANT
+
+    span.style.background = "#2d2d2d";
+    span.style.color = "white";
+    span.style.padding = "2px 6px";
+    span.style.marginLeft = "8px";
+    span.style.borderRadius = "6px";
+    span.style.fontSize = "12px";
+    span.style.cursor = "pointer";
+
+    span.innerHTML =
+      "👨‍💻 Pete can help with <b>loop logic</b>";
+
+    span.onclick = () => {
+      window.dispatchEvent(new CustomEvent("pete-click"));
+    };
+
+    return span;
+  }
+}
+
+const addPeteEffect = StateEffect.define<number>();
+
+const peteField = StateField.define({
+  create() {
+    return Decoration.none;
+  },
+  update(decorations, tr) {
+    decorations = decorations.map(tr.changes);
+
+    for (let e of tr.effects) {
+      if (e.is(addPeteEffect)) {
+        const deco = Decoration.widget({
+          widget: new PeteWidget(() => {
+            window.dispatchEvent(new CustomEvent("pete-click"));
+          }),
+          side: 1
+        }).range(e.value);
+
+        return Decoration.set([deco]);
+      }
+    }
+
+    return decorations;
+  },
+  provide: f => EditorView.decorations.from(f)
+});
+
 export default function Editor() {
 
 
+const defaultCode = `# Convert an integer to Roman numerals
+
+  def int_to_roman(num):
+      val = [
+          1000, 900, 500, 400,
+          100, 90, 50, 40,
+          10, 9, 5, 4, 1
+      ]
+      syms = [
+          "M", "CM", "D", "CD",
+          "C", "XC", "L", "XL",
+          "X", "IX", "V", "IV", "I"
+      ]
+      roman_num = ""
+      i = 0
+      while num > 0:
+          for _ in range(num // val[i]):
+              roman_num += syms[i]
+              num -= val[i]
+          i += 1
+      return roman_num
+
+  print(int_to_roman(58))
+  `;
+
+  const [code, setCode] = useState(defaultCode);
+const [showSuggestion, setShowSuggestion] = useState(false);
+const [peteAvailable, setPeteAvailable] = useState(true);
+const typingTimer = useRef<NodeJS.Timeout | null>(null);
+
+const [showStatusPopup, setShowStatusPopup] = useState(false);
   
   const [opened, {open, close}] = useDisclosure(false) //Tree Modal NOT REQUIRED
   const [helpOpened, { open: openHelp, close: closeHelp }] = useDisclosure(false);
@@ -45,6 +183,20 @@ export default function Editor() {
   function handleCollabModalClose() {
     setCollabModalOpen(false);
   }
+
+  useEffect(() => {
+    const handler = () => {
+      setPeteAvailable(prev => !prev); // toggle state
+      setShowStatusPopup(true);
+    };
+
+    window.addEventListener("pete-click", handler);
+
+    return () => {
+      window.removeEventListener("pete-click", handler);
+    };
+  }, []);
+  
   const [personalEditorExtensions, setPersonalEditorExtensions] = useState<Extension[]>(() => [python()]);
     const [isSessionStartedModalOpen, setIsSessionStartedModalOpen] = useState(false);
     const [sessionDetails, setSessionDetails] = useState({
@@ -68,6 +220,18 @@ export default function Editor() {
   }
   const handleCloseSessionStartedModal = () => {
     setIsSessionStartedModalOpen(false);
+  };
+
+  const handleChange = (value: string | undefined) => {
+    setCode(value || "");
+
+    if (typingTimer.current) {
+      clearTimeout(typingTimer.current);
+    }
+
+    typingTimer.current = setTimeout(() => {
+      setShowSuggestion(true);
+    }, 2000); // 2 seconds after typing
   };
 
   useEffect(() => {
@@ -226,6 +390,8 @@ const helpMe = () => {
   });
 };
 
+const editorRef = useRef<EditorView | null>(null);
+
 
 
   return (
@@ -244,12 +410,204 @@ const helpMe = () => {
                       <Button size='compact-xs'>Test</Button>
                     </Group>
                   </Group>
-                  <div style={{ flexGrow: 1, overflow: 'auto' }}> {/* Allow CodeMirror to take remaining space */}
+                  <div style={{ flexGrow: 1, overflow: 'auto', position: 'relative' }}> {/* Allow CodeMirror to take remaining space */}
                      <CodeMirror
                        height="100%" 
-                       extensions={[python(),yCollab(ytext,provider.awareness)]} 
+                       value={code}
+                       extensions={[python(),yCollab(ytext,provider.awareness), peteField]} 
                        style={{ height: '100%' }} 
+                       onCreateEditor={(view) => {
+                        editorRef.current = view;
+                      }}
+                       onChange={(value) => {
+                          if (typingTimer.current) {
+                            clearTimeout(typingTimer.current);
+                          }
+
+                          typingTimer.current = setTimeout(() => {
+                            if (!editorRef.current) return;
+
+                            const pos = editorRef.current.state.selection.main.head;
+
+                            editorRef.current.dispatch({
+                              effects: addPeteEffect.of(pos)
+                            });
+                          }, 2000);
+                        }}
                      />
+
+                     {showStatusPopup && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: "100px",
+                          right: "40px",
+                          background: "white",
+                          padding: "16px",
+                          borderRadius: "10px",
+                          width: "220px",
+                          boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
+                          zIndex: 9999
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", marginBottom: "10px" }}>
+                          <span style={{ fontSize: "24px", marginRight: "10px" }}>👨‍💻</span>
+                          <div>
+                            <div><b>Pete</b></div>
+                            <div style={{ color: peteAvailable ? "green" : "red" }}>
+                              {peteAvailable ? "● Available" : "● Deep Work"}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* <button
+                          style={{
+                            width: "100%",
+                            padding: "6px",
+                            background: peteAvailable ? "#4CAF50" : "#777",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "6px",
+                            marginBottom: "8px",
+                            cursor: "pointer"
+                          }}
+                        >
+                          {peteAvailable ? "Help Me" : "Help Me When Free"}
+                        </button> */}
+
+                        <button
+                          style={{
+                            width: "100%",
+                            padding: "6px",
+                            background: peteAvailable ? "#4CAF50" : "#ff9800",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "6px",
+                            marginBottom: "8px",
+                            cursor: "pointer"
+                          }}
+                          onClick={() => {
+                            const widget = document.getElementById("pete-inline-widget");
+
+                            if (widget) {
+                              if (peteAvailable) {
+                                widget.style.background = "#2e7d32"; // green
+                                widget.innerHTML = "👨‍💻 Pete is on the way";
+                              } else {
+                                widget.style.background = "#ff9800"; // orange
+                                widget.innerHTML = "👨‍💻 Pete will ping when free";
+                              }
+                            }
+
+                            setShowStatusPopup(false);
+                          }}
+                        >
+                          {peteAvailable ? "Help Me" : "Help Me When Free"}
+                        </button>
+
+                        <button
+                          style={{
+                            width: "100%",
+                            padding: "6px",
+                            background: "#eee",
+                            border: "none",
+                            borderRadius: "6px",
+                            cursor: "pointer"
+                          }}
+                          onClick={() => {
+                            const widget = document.getElementById("pete-inline-widget");
+                            
+                            if (widget) {
+                              widget.style.background = "#2d2d2d"
+                              widget.innerHTML =  "👨‍💻 Pete can help with <b>loop logic</b>"
+                            }
+
+                            setShowStatusPopup(false)
+                          }}
+                        >
+                          Close
+                        </button>
+                      </div>
+                    )}
+
+
+
+
+
+
+                     {showSuggestion && (
+                        <div style={{
+                          position: "absolute",
+                          bottom: "120px",
+                          right: "60px",
+                          background: "#1e1e1e",
+                          color: "white",
+                          padding: "8px 12px",
+                          borderRadius: "8px",
+                          fontSize: "14px",
+                          boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+                          cursor: "pointer"
+                        }}>
+                          <span
+                            onClick={() => {
+                              setPeteAvailable(prev => !prev);
+                              setShowStatusPopup(true);
+                            }}
+                            style={{ marginRight: "8px", fontSize: "18px" }}
+                          >
+                            👨‍💻
+                          </span>
+                          Pete can help with <b>loop logic and numeral mapping</b>
+                        </div>
+                      )}
+                      {/* {showStatusPopup && (
+                        <div style={{
+                          position: "absolute",
+                          bottom: "180px",
+                          right: "60px",
+                          background: "white",
+                          color: "black",
+                          padding: "16px",
+                          borderRadius: "10px",
+                          width: "220px",
+                          boxShadow: "0 6px 16px rgba(0,0,0,0.25)"
+                        }}>
+                          <div style={{ display: "flex", alignItems: "center", marginBottom: "10px" }}>
+                            <span style={{ fontSize: "24px", marginRight: "10px" }}>👨‍💻</span>
+                            <div>
+                              <div><b>Pete</b></div>
+                              <div style={{ color: peteAvailable ? "green" : "red" }}>
+                                {peteAvailable ? "● Available" : "● Deep Work"}
+                              </div>
+                            </div>
+                          </div>
+
+                          <button style={{
+                            width: "100%",
+                            padding: "6px",
+                            background: peteAvailable ? "#4CAF50" : "#888",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "6px",
+                            marginBottom: "6px"
+                          }}>
+                            {peteAvailable ? "Help Me" : "Help Me When Free"}
+                          </button>
+
+                          <button
+                            style={{
+                              width: "100%",
+                              padding: "6px",
+                              background: "#eee",
+                              border: "none",
+                              borderRadius: "6px"
+                            }}
+                            onClick={() => setShowStatusPopup(false)}
+                          >
+                            Close
+                          </button>
+                        </div>
+                      )} */}
                   </div>
                 </div>
               </Panel>

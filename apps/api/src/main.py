@@ -19,7 +19,7 @@ import json
 import study_problem_sol
 from datetime import datetime, timedelta
 from fastapi_utilities import repeat_every
-from google import genai
+# from google import genai
 from openai import OpenAI
 app = FastAPI()
 
