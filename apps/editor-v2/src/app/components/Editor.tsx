@@ -14,6 +14,7 @@ import GraphComponent from './SMM';
 import { Background, ReactFlowProvider } from '@xyflow/react';
 import CollaborativeOpportunityModal from './modals/CollabModal';
 import { Extension } from "@codemirror/state";
+import { EditorView } from "@codemirror/view";
 import { createPersonalEditorUpdateExtension } from './modals/extension';
 import HelpSessionStartedModal from './modals/HelpSessionModal';
 
@@ -271,6 +272,56 @@ def run():
 
 run()
   `;
+  const tomLiveMockCode = `# Tom's live workspace (mock stream from Tom's personal editor)
+from study_problem_classes import Menu, Order, Customer, Restaurant
+
+def add_to_order(customer: Customer, order_id: int, menu: Menu, item: str):
+    # Tom is currently struggling with dictionary access and key checks
+    if order_id not in customer.order:
+        print("No order found")
+        return
+
+    if item not in menu.dishes:
+        print("Not on menu")
+        return
+
+    order = customer.order[order_id]
+    order.items.append(item)
+    # TODO Tom: update order.cost using menu.dishes[item]
+    # TODO Tom: print "Added [item]: [cost]"
+    pass
+
+def remove_from_order(customer: Customer, order_id: int, menu: Menu, item: str):
+    pass
+`;
+  const peteReferenceCode = `# Pete solved a similar dictionary-pattern task earlier
+def add_to_order(order_book, order_id, menu, item):
+    if order_id not in order_book:
+        return "No order found"
+
+    if item not in menu:
+        return "Not on menu"
+
+    order = order_book[order_id]
+    order["items"].append(item)
+    order["cost"] += menu[item]
+    return f"Added {item}: {menu[item]}"
+`;
+  const peteTomAssistStarter = `# Pete helper draft for Tom's method
+def add_to_order(customer, order_id, menu, item):
+    if order_id not in customer.order:
+        print("No order found")
+        return
+    if item not in menu.dishes:
+        print("Not on menu")
+        return
+
+    order = customer.order[order_id]
+    order.items.append(item)
+    order.cost += menu.dishes[item]
+    print(f"Added {item}: {menu.dishes[item]}")
+`;
+  const tomMethodSignature = "def add_to_order";
 
   const [code, setCode] = useState(defaultCode);
   const [isTomInterruptible] = useState(true);
@@ -280,8 +331,12 @@ run()
   const [helpOption, setHelpOption] = useState<string | null>(null);
   const [history, setHistory] = useState([]);
   const [personalCode, setPersonalCode] = useState("# Hello world\nprint('hello world')");
+  const [personalKeystrokes, setPersonalKeystrokes] = useState(0);
+  const [showHelpTomSuggestion, setShowHelpTomSuggestion] = useState(false);
+  const [helperAssistActive, setHelperAssistActive] = useState(false);
   const backendServer = "localhost";
   const wsRef = useRef<WebSocket | null>(null);
+  const teamEditorRef = useRef<EditorView | null>(null);
   const id = localStorage.getItem('participant-id') || 'D';
   const storedUserId = id.replace(/"/g, '');
   const [collabData, setCollabData] = useState([]);
@@ -319,6 +374,48 @@ run()
   const handleCloseSessionStartedModal = () => {
     setIsSessionStartedModalOpen(false);
   };
+
+  const jumpToTomMethod = (methodSignature: string) => {
+    if (!teamEditorRef.current) {
+      return;
+    }
+    const view = teamEditorRef.current;
+    const doc = view.state.doc.toString();
+    const cursorPos = doc.indexOf(methodSignature);
+    if (cursorPos < 0) {
+      return;
+    }
+    view.dispatch({
+      selection: { anchor: cursorPos },
+      scrollIntoView: true,
+    });
+    view.focus();
+  };
+
+  const startHelpingTom = () => {
+    setHelperAssistActive(true);
+    setShowHelpTomSuggestion(false);
+    setCode(tomLiveMockCode);
+    setPersonalCode(peteTomAssistStarter);
+    window.requestAnimationFrame(() => {
+      jumpToTomMethod(tomMethodSignature);
+    });
+  };
+
+  const handlePersonalCodeChange = (value: string) => {
+    setPersonalCode(value);
+    setPersonalKeystrokes((prev) => prev + 1);
+    const lower = value.toLowerCase();
+    if (!helperAssistActive && (lower.includes("#done") || lower.includes("task complete"))) {
+      setShowHelpTomSuggestion(true);
+    }
+  };
+
+  useEffect(() => {
+    if (!helperAssistActive && personalKeystrokes >= 20) {
+      setShowHelpTomSuggestion(true);
+    }
+  }, [personalKeystrokes, helperAssistActive]);
 
   // helpee side timing mock removed for helper-side demo.
 
@@ -502,6 +599,9 @@ run()
                       value={code}
                       extensions={[python(), yCollab(ytext, provider.awareness)]}
                       style={{ height: '100%' }}
+                      onCreateEditor={(view) => {
+                        teamEditorRef.current = view;
+                      }}
                       onChange={(value) => {
                         setCode(value);
                       }}
@@ -544,6 +644,11 @@ run()
                         <div style={{ fontSize: "11px", color: isTomInterruptible ? "#16a34a" : "#dc2626" }}>
                           {isTomInterruptible ? "Interruptible" : "Do not interrupt"}
                         </div>
+                        {helperAssistActive && (
+                          <div style={{ fontSize: "11px", color: "#334155" }}>
+                            Live focus: add_to_order
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -558,7 +663,7 @@ run()
                 <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                   {/* Button Group - should not grow or shrink */}
                   <Group justify="space-between" p="xs" style={{ borderBottom: '1px solid #ccc', flexShrink: 0 }}>
-                    <Title order={3}>Personal Editor</Title>
+                    <Title order={3}>{helperAssistActive ? "Helper Workspace" : "Personal Editor"}</Title>
                     <Group>
                       <Button onClick={testCodePlayground} size='compact-xs'>Test</Button>
                       <Button onClick={runPersonalCode} size='compact-xs'>Run</Button>
@@ -568,13 +673,73 @@ run()
                   </Group>
                   {/* CodeMirror Container - should grow and scroll */}
                   <div style={{ flexGrow: 1, overflow: 'auto', minHeight: 0 }}> {/* Added minHeight: 0 */}
-                    <CodeMirror
-                      height="100%" // Changed from 500px to 100%
-                      value={personalCode}
-                      onChange={(value) => setPersonalCode(value)}
-                      extensions={personalEditorExtensions}
-                      style={{ height: '100%' }} // Ensure CM fills its container
-                    />
+                    {showHelpTomSuggestion && !helperAssistActive && (
+                      <div
+                        style={{
+                          margin: "10px",
+                          background: "#eff6ff",
+                          border: "1px solid #bfdbfe",
+                          borderRadius: "10px",
+                          padding: "10px 12px"
+                        }}
+                      >
+                        <div style={{ fontSize: "12px", fontWeight: 700, color: "#1d4ed8", marginBottom: "6px" }}>
+                          Suggestion for Pete
+                        </div>
+                        <div style={{ fontSize: "12px", color: "#1f2937", marginBottom: "10px" }}>
+                          You just finished a task. Tom is blocked on dictionary usage in <code>add_to_order</code>.
+                        </div>
+                        <Group gap="xs">
+                          <Button size="compact-xs" onClick={startHelpingTom}>Help Tom Now</Button>
+                          <Button size="compact-xs" variant="light" onClick={() => setShowHelpTomSuggestion(false)}>
+                            Dismiss
+                          </Button>
+                        </Group>
+                      </div>
+                    )}
+                    {helperAssistActive ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "8px", height: "100%", padding: "10px" }}>
+                        <div style={{ fontSize: "12px", fontWeight: 700, color: "#334155" }}>
+                          Your editable draft for Tom
+                        </div>
+                        <div style={{ flexGrow: 1, minHeight: 0 }}>
+                          <CodeMirror
+                            height="100%"
+                            value={personalCode}
+                            onChange={handlePersonalCodeChange}
+                            extensions={personalEditorExtensions}
+                            style={{ height: "100%" }}
+                          />
+                        </div>
+                        <div
+                          style={{
+                            borderRadius: "8px",
+                            border: "1px solid #cbd5e1",
+                            background: "#f1f5f9",
+                            padding: "8px"
+                          }}
+                        >
+                          <div style={{ fontSize: "11px", fontWeight: 700, color: "#475569", marginBottom: "6px" }}>
+                            Pete's similar past solution (read-only reference)
+                          </div>
+                          <CodeMirror
+                            height="170px"
+                            value={peteReferenceCode}
+                            editable={false}
+                            extensions={[python()]}
+                            style={{ opacity: 0.8 }}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <CodeMirror
+                        height="100%" // Changed from 500px to 100%
+                        value={personalCode}
+                        onChange={handlePersonalCodeChange}
+                        extensions={personalEditorExtensions}
+                        style={{ height: '100%' }} // Ensure CM fills its container
+                      />
+                    )}
                   </div>
                 </div>
               </Panel>
