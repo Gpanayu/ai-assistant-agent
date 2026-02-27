@@ -921,7 +921,14 @@ def add_to_order(customer, order_id, menu, item):
                             height="100%"
                             value={personalCode}
                             onChange={handlePersonalCodeChange}
-                            extensions={[...personalEditorExtensions, purpleCaretTheme, helperAssistField]}
+                            extensions={[
+                              ...personalEditorExtensions,
+                              purpleCaretTheme,
+                              runIconField,
+                              runIconGutter,
+                              runIconGutterTheme,
+                              helperAssistField,
+                            ]}
                             style={{ height: "100%" }}
                           />
                         </div>
@@ -950,7 +957,12 @@ def add_to_order(customer, order_id, menu, item):
                         height="100%" // Changed from 500px to 100%
                         value={personalCode}
                         onChange={handlePersonalCodeChange}
-                        extensions={personalEditorExtensions}
+                        extensions={[
+                          ...personalEditorExtensions,
+                          runIconField,
+                          runIconGutter,
+                          runIconGutterTheme,
+                        ]}
                         style={{ height: '100%' }} // Ensure CM fills its container
                       />
                     )}
