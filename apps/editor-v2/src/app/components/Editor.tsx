@@ -296,7 +296,6 @@ export default function Editor() {
                     >
                       <div
                         style={{
-                          position: "relative",
                           width: "32px",
                           height: "32px",
                           borderRadius: "50%",
@@ -306,22 +305,12 @@ export default function Editor() {
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          fontSize: "14px"
+                          fontSize: "14px",
+                          boxSizing: "border-box",
+                          border: isTomInterruptible ? "3px solid #22c55e" : "3px solid #ef4444"
                         }}
                       >
                         T
-                        <span
-                          style={{
-                            position: "absolute",
-                            right: "-1px",
-                            bottom: "-1px",
-                            width: "10px",
-                            height: "10px",
-                            borderRadius: "50%",
-                            background: isTomInterruptible ? "#22c55e" : "#ef4444",
-                            border: "2px solid white"
-                          }}
-                        />
                       </div>
                       <div>
                         <div style={{ fontSize: "12px", fontWeight: 700 }}>Tom</div>
