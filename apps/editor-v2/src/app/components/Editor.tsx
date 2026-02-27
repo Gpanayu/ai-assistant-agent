@@ -399,6 +399,12 @@ def add_to_order(customer: Customer, order_id: int, menu: Menu, item: str):
 def remove_from_order(customer: Customer, order_id: int, menu: Menu, item: str):
     pass
 `;
+  const initialPersonalMethod = `def inventory_helper(restaurant: Restaurant, item: str):
+    """
+    Check if the item is available in inventory and decrement its quantity by one if available.
+    """
+    pass
+`;
   const peteReferenceCode = `# Pete solved a similar dictionary-pattern task earlier
 def inventory_helper(restaurant, item):
     if item not in restaurant.inventory:
@@ -438,9 +444,10 @@ def add_to_order(customer, order_id, menu, item):
   const [helpOpened, { open: openHelp, close: closeHelp }] = useDisclosure(false);
   const [helpOption, setHelpOption] = useState<string | null>(null);
   const [history, setHistory] = useState([]);
-  const [personalCode, setPersonalCode] = useState("# Hello world\nprint('hello world')");
+  const [personalCode, setPersonalCode] = useState(initialPersonalMethod);
   const [personalKeystrokes, setPersonalKeystrokes] = useState(0);
   const [showHelpTomSuggestion, setShowHelpTomSuggestion] = useState(false);
+  const [isTomCardVisible, setTomCardVisible] = useState(false);
   const [helperAssistActive, setHelperAssistActive] = useState(false);
   const backendServer = "localhost";
   const wsRef = useRef<WebSocket | null>(null);
@@ -513,17 +520,13 @@ def add_to_order(customer, order_id, menu, item):
   const handlePersonalCodeChange = (value: string) => {
     setPersonalCode(value);
     setPersonalKeystrokes((prev) => prev + 1);
-    const lower = value.toLowerCase();
-    if (!helperAssistActive && (lower.includes("#done") || lower.includes("task complete"))) {
-      setShowHelpTomSuggestion(true);
-    }
   };
 
   useEffect(() => {
-    if (!helperAssistActive && personalKeystrokes >= 20) {
-      setShowHelpTomSuggestion(true);
+    if (!helperAssistActive && !isTomCardVisible && personalKeystrokes >= 20) {
+      setTomCardVisible(true);
     }
-  }, [personalKeystrokes, helperAssistActive]);
+  }, [personalKeystrokes, helperAssistActive, isTomCardVisible]);
 
   useEffect(() => {
     if (!helperAssistActive) return;
@@ -642,14 +645,23 @@ def add_to_order(customer, order_id, menu, item):
     // IMPLEMENT SPINNER
     // setIconClass("fa-solid fa-spinner");
 
-    await fetch(`http://${backendServer}:8000/testFunction`, {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ code: code, channel: channel }),
-    });
+    if (!helperAssistActive) {
+      setTomCardVisible(true);
+      setShowHelpTomSuggestion(true);
+    }
+
+    try {
+      await fetch(`http://${backendServer}:8000/testFunction`, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ code: code, channel: channel }),
+      });
+    } catch (e) {
+      console.error("Test function request failed:", e);
+    }
     console.log("testing personal code:", code);
   }
 
@@ -721,7 +733,7 @@ def add_to_order(customer, order_id, menu, item):
       <Container fluid h={"90vh"} p={0}>
         <PanelGroup direction="vertical">
 
-          <Panel defaultSize={50} minSize={20}>
+          <Panel defaultSize={75} minSize={35}>
             <PanelGroup direction="horizontal">
               {/* --- Original Team Editor Panel --- */}
               <Panel defaultSize={50} minSize={20}> {/* Adjust defaultSize as needed */}
@@ -750,51 +762,56 @@ def add_to_order(customer, order_id, menu, item):
                         setCode(value);
                       }}
                     />
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: "20px",
-                        right: "20px",
-                        background: "white",
-                        padding: "10px 12px",
-                        borderRadius: "10px",
-                        boxShadow: "0 6px 16px rgba(0,0,0,0.18)",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "10px",
-                        zIndex: 20
-                      }}
-                    >
+                    {isTomCardVisible && (
                       <div
+                        className={styles.TomCardPop}
                         style={{
-                          width: "32px",
-                          height: "32px",
-                          borderRadius: "50%",
-                          background: "#334155",
-                          color: "white",
-                          fontWeight: 700,
+                          position: "absolute",
+                          top: "20px",
+                          right: "20px",
+                          background: "white",
+                          padding: "10px 12px",
+                          borderRadius: "10px",
+                          boxShadow: "0 6px 16px rgba(0,0,0,0.18)",
                           display: "flex",
                           alignItems: "center",
-                          justifyContent: "center",
-                          fontSize: "14px",
-                          boxSizing: "border-box",
-                          border: isTomInterruptible ? "3px solid #22c55e" : "3px solid #ef4444"
+                          gap: "10px",
+                          zIndex: 20
                         }}
                       >
-                        T
-                      </div>
-                      <div>
-                        <div style={{ fontSize: "12px", fontWeight: 700 }}>Tom</div>
-                        <div style={{ fontSize: "11px", color: isTomInterruptible ? "#16a34a" : "#dc2626" }}>
-                          {isTomInterruptible ? "Interruptible" : "Do not interrupt"}
+                        <div
+                          style={{
+                            width: "32px",
+                            height: "32px",
+                            borderRadius: "50%",
+                            background: "#334155",
+                            color: "white",
+                            fontWeight: 700,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: "14px",
+                            boxSizing: "border-box",
+                            border: isTomInterruptible ? "3px solid #22c55e" : "3px solid #ef4444"
+                          }}
+                        >
+                          T
                         </div>
-                        {helperAssistActive && (
-                          <div style={{ fontSize: "11px", color: "#334155" }}>
-                            Live focus: add_to_order
+                        <div>
+                          <div style={{ fontSize: "12px", fontWeight: 700 }}>Tom</div>
+                          <div style={{ fontSize: "11px", color: isTomInterruptible ? "#16a34a" : "#dc2626" }}>
+                            {isTomInterruptible
+                              ? "Interruptible. Tom tags you for help."
+                              : "Do not interrupt"}
                           </div>
-                        )}
+                          {helperAssistActive && (
+                            <div style={{ fontSize: "11px", color: "#334155" }}>
+                              Live focus: add_to_order
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               </Panel>
@@ -831,10 +848,10 @@ def add_to_order(customer, order_id, menu, item):
                           Suggestion for Pete
                         </div>
                         <div style={{ fontSize: "12px", color: "#1f2937", marginBottom: "10px" }}>
-                          You just finished a task. Tom is blocked on dictionary usage in <code>add_to_order</code>.
+                          Tom is blocked on dictionary usage in <code>add_to_order</code>.
                         </div>
                         <Group gap="xs">
-                          <Button size="compact-xs" onClick={startHelpingTom}>Help Tom Now</Button>
+                          <Button size="compact-xs" onClick={startHelpingTom}>Go Help Tom</Button>
                           <Button size="compact-xs" variant="light" onClick={() => setShowHelpTomSuggestion(false)}>
                             Dismiss
                           </Button>
@@ -892,7 +909,7 @@ def add_to_order(customer, order_id, menu, item):
           <PanelResizeHandle />
 
           {/* NEW: Panel below Team Editor */}
-          <Panel defaultSize={50} minSize={20}>
+          <Panel defaultSize={25} minSize={15}>
             <PanelGroup direction="horizontal">
               <Panel defaultSize={50}>
                 <div style={{ padding: '10px' }}>

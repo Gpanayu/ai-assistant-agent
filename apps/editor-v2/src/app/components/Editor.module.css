@@ -20,6 +20,26 @@
   padding: 10px;
 }
 
+.TomCardPop {
+  animation: tom-card-pop 320ms ease-out;
+  transform-origin: top right;
+}
+
+@keyframes tom-card-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(1px) scale(1.01);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 
 /* Define base styles if needed, e.g., for box-sizing */
 *, *::before, *::after {
