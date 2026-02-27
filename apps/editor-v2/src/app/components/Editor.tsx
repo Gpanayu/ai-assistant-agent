@@ -19,7 +19,8 @@ import { createPersonalEditorUpdateExtension } from './modals/extension';
 import HelpSessionStartedModal from './modals/HelpSessionModal';
 
 const REFERENCE_HIGHLIGHT_LINES = [2, 3, 5, 6, 7, 8, 9];
-const ASSIST_ANCHOR = "def add_to_order";
+const TOM_ASSIST_ANCHOR = "    # TODO Tom: update order.cost using menu.dishes[item]";
+const HELPER_ASSIST_ANCHOR = "    # TODO Tom: update order.cost using menu.dishes[item]";
 
 class PeerAssistWidget extends WidgetType {
   constructor(private readonly text: string) {
@@ -74,10 +75,10 @@ const referenceHighlightTheme = EditorView.theme({
   },
 });
 
-function buildAssistDecoration(state: EditorState, message: string) {
-  const anchor = state.doc.toString().indexOf(ASSIST_ANCHOR);
+function buildAssistDecoration(state: EditorState, message: string, anchorText: string) {
+  const anchor = state.doc.toString().indexOf(anchorText);
   if (anchor < 0) return Decoration.none;
-  const anchorEnd = anchor + ASSIST_ANCHOR.length;
+  const anchorEnd = anchor + anchorText.length;
   return Decoration.set([
     Decoration.widget({
       widget: new PeerAssistWidget(message),
@@ -86,22 +87,32 @@ function buildAssistDecoration(state: EditorState, message: string) {
   ]);
 }
 
-function createAssistField(message: string) {
+function createAssistField(message: string, anchorText: string) {
   return StateField.define({
     create(state) {
-      return buildAssistDecoration(state, message);
+      return buildAssistDecoration(state, message, anchorText);
     },
     update(decorations, tr) {
       if (!tr.docChanged) return decorations.map(tr.changes);
-      return buildAssistDecoration(tr.state, message);
+      return buildAssistDecoration(tr.state, message, anchorText);
     },
     provide: (f) => EditorView.decorations.from(f),
   });
 }
 
-const tomAssistField = createAssistField("Pete is here. This is where Tom needs your help.");
-const helperAssistField = createAssistField("Peer-assist focus from Tom's workspace.");
+const tomAssistField = createAssistField(
+  "Pete is here. This is where Tom needs your help.",
+  TOM_ASSIST_ANCHOR
+);
+const helperAssistField = createAssistField(
+  "Peer-assist focus from Tom's workspace.",
+  HELPER_ASSIST_ANCHOR
+);
 const purpleCaretTheme = EditorView.theme({
+  ".cm-cursor": {
+    display: "block !important",
+    borderLeftColor: "#7c3aed",
+  },
   "&.cm-focused .cm-cursor": {
     borderLeftColor: "#7c3aed",
   },
@@ -416,7 +427,7 @@ def add_to_order(customer, order_id, menu, item):
     order.cost += menu.dishes[item]
     print(f"Added {item}: {menu.dishes[item]}")
 `;
-  const tomMethodSignature = ASSIST_ANCHOR;
+  const tomMethodSignature = "def add_to_order";
 
   const [code, setCode] = useState(defaultCode);
   const [isTomInterruptible] = useState(true);
@@ -491,7 +502,7 @@ def add_to_order(customer, order_id, menu, item):
     setHelperAssistActive(true);
     setShowHelpTomSuggestion(false);
     setCode(tomLiveMockCode);
-    setPersonalCode(peteTomAssistStarter);
+    setPersonalCode(tomLiveMockCode);
     window.requestAnimationFrame(() => {
       jumpToTomMethod(tomMethodSignature);
     });
