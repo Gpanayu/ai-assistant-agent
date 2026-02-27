@@ -456,7 +456,12 @@ def remove_from_order(customer: Customer, order_id: int, menu: Menu, item: str):
     """
     Check if the item is available in inventory and decrement its quantity by one if available.
     """
-    pass
+    if item not in restaurant.inventory:
+        return False
+    if restaurant.inventory[item] <= 0:
+        return False
+    restaurant.inventory[item] -= 1
+    return True
 `;
   const peteReferenceCode = `# Pete solved a similar dictionary-pattern task earlier
 def inventory_helper(restaurant, item):
