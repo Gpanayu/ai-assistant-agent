@@ -13,66 +13,9 @@ import { useEffect, useState, useRef } from 'react';
 import GraphComponent from './SMM';
 import { Background, ReactFlowProvider } from '@xyflow/react';
 import CollaborativeOpportunityModal from './modals/CollabModal';
-import { EditorView, ViewPlugin, ViewUpdate } from "@codemirror/view";
 import { Extension } from "@codemirror/state";
 import { createPersonalEditorUpdateExtension } from './modals/extension';
 import HelpSessionStartedModal from './modals/HelpSessionModal';
-
-
-import { Decoration, WidgetType } from "@codemirror/view";
-import { StateField, StateEffect } from "@codemirror/state";
-
-class PeteWidget extends WidgetType {
-  toDOM(view: EditorView) {
-    const span = document.createElement("span");
-
-    span.id = "pete-inline-widget"; // 👈 IMPORTANT
-
-    span.style.background = "#2d2d2d";
-    span.style.color = "white";
-    span.style.padding = "2px 6px";
-    span.style.marginLeft = "8px";
-    span.style.borderRadius = "6px";
-    span.style.fontSize = "12px";
-    span.style.cursor = "pointer";
-
-    span.innerHTML =
-      "👨‍💻 Pete can help with <b>loop logic</b>";
-
-    span.onclick = () => {
-      window.dispatchEvent(new CustomEvent("pete-click"));
-    };
-
-    return span;
-  }
-}
-
-const addPeteEffect = StateEffect.define<number>();
-
-const peteField = StateField.define({
-  create() {
-    return Decoration.none;
-  },
-  update(decorations, tr) {
-    decorations = decorations.map(tr.changes);
-
-    for (let e of tr.effects) {
-      if (e.is(addPeteEffect)) {
-        const deco = Decoration.widget({
-          widget: new PeteWidget(() => {
-            window.dispatchEvent(new CustomEvent("pete-click"));
-          }),
-          side: 1
-        }).range(e.value);
-
-        return Decoration.set([deco]);
-      }
-    }
-
-    return decorations;
-  },
-  provide: f => EditorView.decorations.from(f)
-});
 
 export default function Editor() {
 
@@ -103,11 +46,7 @@ export default function Editor() {
   `;
 
   const [code, setCode] = useState(defaultCode);
-  const [showSuggestion, setShowSuggestion] = useState(false);
-  const [peteAvailable, setPeteAvailable] = useState(true);
-  const typingTimer = useRef<NodeJS.Timeout | null>(null);
-
-  const [showStatusPopup, setShowStatusPopup] = useState(false);
+  const [isTomInterruptible] = useState(true);
 
   const [opened, { open, close }] = useDisclosure(false) //Tree Modal NOT REQUIRED
   const [helpOpened, { open: openHelp, close: closeHelp }] = useDisclosure(false);
@@ -128,19 +67,6 @@ export default function Editor() {
   function handleCollabModalClose() {
     setCollabModalOpen(false);
   }
-
-  useEffect(() => {
-    const handler = () => {
-      setPeteAvailable(prev => !prev); // toggle state
-      setShowStatusPopup(true);
-    };
-
-    window.addEventListener("pete-click", handler);
-
-    return () => {
-      window.removeEventListener("pete-click", handler);
-    };
-  }, []);
 
   const [personalEditorExtensions, setPersonalEditorExtensions] = useState<Extension[]>(() => [python()]);
   const [isSessionStartedModalOpen, setIsSessionStartedModalOpen] = useState(false);
@@ -167,18 +93,7 @@ export default function Editor() {
     setIsSessionStartedModalOpen(false);
   };
 
-  // helpee side
-  // const handleChange = (value: string | undefined) => {
-  //   setCode(value || "");
-
-  //   if (typingTimer.current) {
-  //     clearTimeout(typingTimer.current);
-  //   }
-
-  //   typingTimer.current = setTimeout(() => {
-  //     setShowSuggestion(true);
-  //   }, 2000); // 2 seconds after typing
-  // };
+  // helpee side timing mock removed for helper-side demo.
 
   useEffect(() => {
     if (storedUserId && !wsRef.current) {
@@ -338,10 +253,6 @@ export default function Editor() {
       });
   };
 
-  const editorRef = useRef<EditorView | null>(null);
-
-
-
   return (
     <>
       <Container fluid h={"90vh"} p={0}>
@@ -362,129 +273,63 @@ export default function Editor() {
                     <CodeMirror
                       height="100%"
                       value={code}
-                      extensions={[python(), yCollab(ytext, provider.awareness), peteField]}
+                      extensions={[python(), yCollab(ytext, provider.awareness)]}
                       style={{ height: '100%' }}
-                      onCreateEditor={(view) => {
-                        editorRef.current = view;
-                      }}
                       onChange={(value) => {
-                        if (typingTimer.current) {
-                          clearTimeout(typingTimer.current);
-                        }
-
-                        // typingTimer.current = setTimeout(() => {
-                        //   if (!editorRef.current) return;
-
-                        //   const pos = editorRef.current.state.selection.main.head;
-
-                        //   editorRef.current.dispatch({
-                        //     effects: addPeteEffect.of(pos)
-                        //   });
-                        // }, 2000);
+                        setCode(value);
                       }}
                     />
-                    {showStatusPopup && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: "20px",
+                        right: "20px",
+                        background: "white",
+                        padding: "10px 12px",
+                        borderRadius: "10px",
+                        boxShadow: "0 6px 16px rgba(0,0,0,0.18)",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "10px",
+                        zIndex: 20
+                      }}
+                    >
                       <div
                         style={{
-                          position: "absolute",
-                          top: "100px",
-                          right: "40px",
-                          background: "white",
-                          padding: "16px",
-                          borderRadius: "10px",
-                          width: "220px",
-                          boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
-                          zIndex: 9999
+                          position: "relative",
+                          width: "32px",
+                          height: "32px",
+                          borderRadius: "50%",
+                          background: "#334155",
+                          color: "white",
+                          fontWeight: 700,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: "14px"
                         }}
                       >
-                        <div style={{ display: "flex", alignItems: "center", marginBottom: "10px" }}>
-                          <span style={{ fontSize: "24px", marginRight: "10px" }}>👨‍💻</span>
-                          <div>
-                            <div><b>Pete</b></div>
-                            <div style={{ color: peteAvailable ? "green" : "red" }}>
-                              {peteAvailable ? "● Available" : "● Deep Work"}
-                            </div>
-                          </div>
-                        </div>
-
-                        <button
-                          style={{
-                            width: "100%",
-                            padding: "6px",
-                            background: peteAvailable ? "#4CAF50" : "#ff9800",
-                            color: "white",
-                            border: "none",
-                            borderRadius: "6px",
-                            marginBottom: "8px",
-                            cursor: "pointer"
-                          }}
-                          onClick={() => {
-                            const widget = document.getElementById("pete-inline-widget");
-
-                            if (widget) {
-                              if (peteAvailable) {
-                                widget.style.background = "#2e7d32"; // green
-                                widget.innerHTML = "👨‍💻 Pete is on the way";
-                              } else {
-                                widget.style.background = "#ff9800"; // orange
-                                widget.innerHTML = "👨‍💻 Pete will ping when free";
-                              }
-                            }
-                            setShowStatusPopup(false);
-                          }}
-                        >
-                          {peteAvailable ? "Help Me" : "Help Me When Free"}
-                        </button>
-
-                        <button
-                          style={{
-                            width: "100%",
-                            padding: "6px",
-                            background: "#eee",
-                            border: "none",
-                            borderRadius: "6px",
-                            cursor: "pointer"
-                          }}
-                          onClick={() => {
-                            const widget = document.getElementById("pete-inline-widget");
-
-                            if (widget) {
-                              widget.style.background = "#2d2d2d"
-                              widget.innerHTML = "👨‍💻 Pete can help with <b>loop logic</b>"
-                            }
-
-                            setShowStatusPopup(false)
-                          }}
-                        >
-                          Close
-                        </button>
-                      </div>
-                    )}
-                    {showSuggestion && (
-                      <div style={{
-                        position: "absolute",
-                        bottom: "120px",
-                        right: "60px",
-                        background: "#1e1e1e",
-                        color: "white",
-                        padding: "8px 12px",
-                        borderRadius: "8px",
-                        fontSize: "14px",
-                        boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-                        cursor: "pointer"
-                      }}>
+                        T
                         <span
-                          onClick={() => {
-                            setPeteAvailable(prev => !prev);
-                            setShowStatusPopup(true);
+                          style={{
+                            position: "absolute",
+                            right: "-1px",
+                            bottom: "-1px",
+                            width: "10px",
+                            height: "10px",
+                            borderRadius: "50%",
+                            background: isTomInterruptible ? "#22c55e" : "#ef4444",
+                            border: "2px solid white"
                           }}
-                          style={{ marginRight: "8px", fontSize: "18px" }}
-                        >
-                          👨‍💻
-                        </span>
-                        Pete can help with <b>loop logic and numeral mapping</b>
+                        />
                       </div>
-                    )}
+                      <div>
+                        <div style={{ fontSize: "12px", fontWeight: 700 }}>Tom</div>
+                        <div style={{ fontSize: "11px", color: isTomInterruptible ? "#16a34a" : "#dc2626" }}>
+                          {isTomInterruptible ? "Interruptible" : "Do not interrupt"}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </Panel>
@@ -656,4 +501,3 @@ provider.awareness.setLocalStateField('user', {
   color: color.color,
   colorLight: color.light,
 });
-
