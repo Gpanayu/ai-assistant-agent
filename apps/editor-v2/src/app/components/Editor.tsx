@@ -29,14 +29,16 @@ class PeerAssistWidget extends WidgetType {
 
   toDOM() {
     const span = document.createElement("span");
-    span.style.marginLeft = "10px";
+    span.style.marginLeft = "8px";
     span.style.padding = "2px 8px";
     span.style.borderRadius = "999px";
-    span.style.background = "#ede9fe";
-    span.style.border = "1px solid #7c3aed";
-    span.style.color = "#5b21b6";
+    span.style.background = "#16a34a";
+    span.style.border = "1px solid #15803d";
+    span.style.color = "#ffffff";
     span.style.fontSize = "11px";
     span.style.fontWeight = "700";
+    span.style.lineHeight = "1.2";
+    span.style.boxShadow = "0 1px 2px rgba(0, 0, 0, 0.2)";
     span.textContent = this.text;
     return span;
   }
@@ -101,11 +103,11 @@ function createAssistField(message: string, anchorText: string) {
 }
 
 const tomAssistField = createAssistField(
-  "Pete is here. This is where Tom needs your help.",
+  "👨‍💻 Pete is here helping now",
   TOM_ASSIST_ANCHOR
 );
 const helperAssistField = createAssistField(
-  "Peer-assist focus from Tom's workspace.",
+  "👨‍💻 Pete is here helping now",
   HELPER_ASSIST_ANCHOR
 );
 const purpleCaretTheme = EditorView.theme({
