@@ -13,10 +13,41 @@ import { useEffect, useState, useRef } from 'react';
 import GraphComponent from './SMM';
 import { Background, ReactFlowProvider } from '@xyflow/react';
 import CollaborativeOpportunityModal from './modals/CollabModal';
-import { Extension } from "@codemirror/state";
-import { EditorView } from "@codemirror/view";
+import { Extension, StateField, EditorState } from "@codemirror/state";
+import { EditorView, Decoration } from "@codemirror/view";
 import { createPersonalEditorUpdateExtension } from './modals/extension';
 import HelpSessionStartedModal from './modals/HelpSessionModal';
+
+const REFERENCE_HIGHLIGHT_LINES = [2, 3, 6, 7, 8];
+
+function buildReferenceDecorations(state: EditorState) {
+  const decorations = [];
+  for (const lineNo of REFERENCE_HIGHLIGHT_LINES) {
+    if (lineNo > state.doc.lines) continue;
+    const line = state.doc.line(lineNo);
+    decorations.push(
+      Decoration.line({ class: "cm-reference-highlight" }).range(line.from)
+    );
+  }
+  return Decoration.set(decorations);
+}
+
+const referenceHighlightField = StateField.define({
+  create(state) {
+    return buildReferenceDecorations(state);
+  },
+  update(decorations, tr) {
+    if (!tr.docChanged) return decorations;
+    return buildReferenceDecorations(tr.state);
+  },
+  provide: (f) => EditorView.decorations.from(f),
+});
+
+const referenceHighlightTheme = EditorView.theme({
+  ".cm-line.cm-reference-highlight": {
+    backgroundColor: "#fff7d6",
+  },
+});
 
 export default function Editor() {
 
@@ -417,6 +448,37 @@ def add_to_order(customer, order_id, menu, item):
     }
   }, [personalKeystrokes, helperAssistActive]);
 
+  useEffect(() => {
+    if (!helperAssistActive) return;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
+
+    const tick = () => {
+      if (cancelled || !teamEditorRef.current) return;
+      const view = teamEditorRef.current;
+      const doc = view.state.doc.toString();
+      const confusionAnchor = doc.indexOf("TODO Tom: update order.cost");
+      const fallbackAnchor = doc.indexOf(tomMethodSignature);
+      const base = confusionAnchor >= 0 ? confusionAnchor : Math.max(0, fallbackAnchor);
+      const shouldMove = Math.random() < 0.35;
+      const jitter = shouldMove ? Math.floor(Math.random() * 7) - 3 : 0;
+      const next = Math.max(0, Math.min(view.state.doc.length, base + jitter));
+
+      view.dispatch({
+        selection: { anchor: next },
+        scrollIntoView: true,
+      });
+
+      timeoutId = setTimeout(tick, 1800 + Math.floor(Math.random() * 2400));
+    };
+
+    timeoutId = setTimeout(tick, 1200);
+    return () => {
+      cancelled = true;
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [helperAssistActive, tomMethodSignature]);
+
   // helpee side timing mock removed for helper-side demo.
 
   useEffect(() => {
@@ -588,7 +650,7 @@ def add_to_order(customer, order_id, menu, item):
               <Panel defaultSize={50} minSize={20}> {/* Adjust defaultSize as needed */}
                 <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                   <Group justify="space-between" p="xs" style={{ borderBottom: '1px solid #ccc' }}>
-                    <Title order={3}>Team Editor</Title>
+                    <Title order={3}>{helperAssistActive ? "Tom's Workspace (Live)" : "Team Editor"}</Title>
                     <Group>
                       <Button size='compact-xs'>Test</Button>
                     </Group>
@@ -726,7 +788,7 @@ def add_to_order(customer, order_id, menu, item):
                             height="170px"
                             value={peteReferenceCode}
                             editable={false}
-                            extensions={[python()]}
+                            extensions={[python(), referenceHighlightField, referenceHighlightTheme]}
                             style={{ opacity: 0.8 }}
                           />
                         </div>
