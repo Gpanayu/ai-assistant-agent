@@ -13,8 +13,8 @@ import { useEffect, useState, useRef } from 'react';
 import GraphComponent from './SMM';
 import { Background, ReactFlowProvider } from '@xyflow/react';
 import CollaborativeOpportunityModal from './modals/CollabModal';
-import { Extension, StateField, EditorState } from "@codemirror/state";
-import { EditorView, Decoration, WidgetType } from "@codemirror/view";
+import { Extension, StateField, EditorState, RangeSetBuilder } from "@codemirror/state";
+import { EditorView, Decoration, WidgetType, GutterMarker, gutter } from "@codemirror/view";
 import { createPersonalEditorUpdateExtension } from './modals/extension';
 import HelpSessionStartedModal from './modals/HelpSessionModal';
 
@@ -120,6 +120,59 @@ const purpleCaretTheme = EditorView.theme({
   },
   "&.cm-focused .cm-selectionBackground, ::selection": {
     backgroundColor: "#ddd6fe",
+  },
+});
+
+class RunIconMarker extends GutterMarker {
+  toDOM() {
+    const span = document.createElement("span");
+    span.textContent = "▶";
+    span.style.color = "#22c55e";
+    span.style.fontSize = "20px";
+    span.style.fontWeight = "800";
+    span.style.lineHeight = "1";
+    span.style.display = "inline-flex";
+    span.style.alignItems = "center";
+    span.style.justifyContent = "right";
+    span.style.width = "16px";
+    span.style.cursor = "pointer";
+    span.title = "Test function";
+    return span;
+  }
+}
+
+const runIconMarker = new RunIconMarker();
+
+function buildRunIconMarkers(state: EditorState) {
+  const builder = new RangeSetBuilder<GutterMarker>();
+  for (let lineNo = 1; lineNo <= state.doc.lines; lineNo += 1) {
+    const line = state.doc.line(lineNo);
+    if (/^\s*def\s+\w+\s*\(/.test(line.text)) {
+      builder.add(line.from, line.from, runIconMarker);
+    }
+  }
+  return builder.finish();
+}
+
+const runIconField = StateField.define({
+  create(state) {
+    return buildRunIconMarkers(state);
+  },
+  update(markers, tr) {
+    if (!tr.docChanged) return markers.map(tr.changes);
+    return buildRunIconMarkers(tr.state);
+  },
+});
+
+const runIconGutter = gutter({
+  class: "cm-run-icon-gutter",
+  markers: (view) => view.state.field(runIconField),
+  initialSpacer: () => runIconMarker,
+});
+
+const runIconGutterTheme = EditorView.theme({
+  ".cm-run-icon-gutter": {
+    width: "22px",
   },
 });
 
@@ -740,9 +793,6 @@ def add_to_order(customer, order_id, menu, item):
                 <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                   <Group justify="space-between" p="xs" style={{ borderBottom: '1px solid #ccc' }}>
                     <Title order={3}>{helperAssistActive ? "Tom's Workspace (Live)" : "Team Editor"}</Title>
-                    <Group>
-                      <Button size='compact-xs'>Test</Button>
-                    </Group>
                   </Group>
                   <div style={{ flexGrow: 1, overflow: 'auto', position: 'relative' }}> {/* Allow CodeMirror to take remaining space */}
                     <CodeMirror
@@ -752,6 +802,9 @@ def add_to_order(customer, order_id, menu, item):
                         python(),
                         yCollab(ytext, provider.awareness),
                         purpleCaretTheme,
+                        runIconField,
+                        runIconGutter,
+                        runIconGutterTheme,
                         ...(helperAssistActive ? [tomAssistField] : []),
                       ]}
                       style={{ height: '100%' }}
