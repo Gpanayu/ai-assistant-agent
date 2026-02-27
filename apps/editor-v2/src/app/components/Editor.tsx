@@ -8,74 +8,19 @@ import { yCollab } from 'y-codemirror.next';
 import * as Y from 'yjs';
 import ReactAnsi from "react-ansi";
 import { WebrtcProvider } from 'y-webrtc';
-import Tree from './Tree'
-import { channel } from 'diagnostics_channel';
 import HelpModal from './modals/HelpModal';
-import { useEffect, useState,useRef } from 'react';
-import { cursorTo } from 'readline';
-import { timeStamp } from 'console';
+import { useEffect, useState, useRef } from 'react';
 import GraphComponent from './SMM';
 import { Background, ReactFlowProvider } from '@xyflow/react';
-import { blob } from 'stream/consumers';
 import CollaborativeOpportunityModal from './modals/CollabModal';
 import { EditorView, ViewPlugin, ViewUpdate } from "@codemirror/view";
 import { Extension } from "@codemirror/state";
-import {createPersonalEditorUpdateExtension} from './modals/extension';
+import { createPersonalEditorUpdateExtension } from './modals/extension';
 import HelpSessionStartedModal from './modals/HelpSessionModal';
 
 
 import { Decoration, WidgetType } from "@codemirror/view";
 import { StateField, StateEffect } from "@codemirror/state";
-
-// class PeteWidget extends WidgetType {
-//   toDOM(view: EditorView) {
-//     const span = document.createElement("span");
-
-//     span.style.background = "#2d2d2d";
-//     span.style.color = "white";
-//     span.style.padding = "2px 6px";
-//     span.style.marginLeft = "8px";
-//     span.style.borderRadius = "6px";
-//     span.style.fontSize = "12px";
-//     span.style.cursor = "pointer";
-
-//     span.innerHTML =
-//       "👨‍💻 Pete can help with <b>loop logic</b>";
-
-//     span.onclick = () => {
-//       alert("Pete is available! (Demo)");
-//     };
-
-//     return span;
-//   }
-// }
-
-
-
-// class PeteWidget extends WidgetType {
-//   constructor(private onClick: () => void) {
-//     super();
-//   }
-
-//   toDOM(view: EditorView) {
-//     const span = document.createElement("span");
-
-//     span.style.background = "#2d2d2d";
-//     span.style.color = "white";
-//     span.style.padding = "2px 6px";
-//     span.style.marginLeft = "8px";
-//     span.style.borderRadius = "6px";
-//     span.style.fontSize = "12px";
-//     span.style.cursor = "pointer";
-
-//     span.innerHTML =
-//       "👨‍💻 Pete can help with <b>loop logic</b>";
-
-//     span.onclick = this.onClick;
-
-//     return span;
-//   }
-// }
 
 class PeteWidget extends WidgetType {
   toDOM(view: EditorView) {
@@ -132,7 +77,7 @@ const peteField = StateField.define({
 export default function Editor() {
 
 
-const defaultCode = `# Convert an integer to Roman numerals
+  const defaultCode = `# Convert an integer to Roman numerals
 
   def int_to_roman(num):
       val = [
@@ -158,13 +103,13 @@ const defaultCode = `# Convert an integer to Roman numerals
   `;
 
   const [code, setCode] = useState(defaultCode);
-const [showSuggestion, setShowSuggestion] = useState(false);
-const [peteAvailable, setPeteAvailable] = useState(true);
-const typingTimer = useRef<NodeJS.Timeout | null>(null);
+  const [showSuggestion, setShowSuggestion] = useState(false);
+  const [peteAvailable, setPeteAvailable] = useState(true);
+  const typingTimer = useRef<NodeJS.Timeout | null>(null);
 
-const [showStatusPopup, setShowStatusPopup] = useState(false);
-  
-  const [opened, {open, close}] = useDisclosure(false) //Tree Modal NOT REQUIRED
+  const [showStatusPopup, setShowStatusPopup] = useState(false);
+
+  const [opened, { open, close }] = useDisclosure(false) //Tree Modal NOT REQUIRED
   const [helpOpened, { open: openHelp, close: closeHelp }] = useDisclosure(false);
   const [helpOption, setHelpOption] = useState<string | null>(null);
   const [history, setHistory] = useState([]);
@@ -176,7 +121,7 @@ const [showStatusPopup, setShowStatusPopup] = useState(false);
   const [collabData, setCollabData] = useState([]);
   const [isCollabModalOpen, setCollabModalOpen] = useState(false);
   const [context, setContext] = useState("");
-  const[istaskopen,settaskmodalopen]=useState(false);
+  const [istaskopen, settaskmodalopen] = useState(false);
   function handleCollabModalOpen() {
     setCollabModalOpen(true);
   }
@@ -196,10 +141,10 @@ const [showStatusPopup, setShowStatusPopup] = useState(false);
       window.removeEventListener("pete-click", handler);
     };
   }, []);
-  
+
   const [personalEditorExtensions, setPersonalEditorExtensions] = useState<Extension[]>(() => [python()]);
-    const [isSessionStartedModalOpen, setIsSessionStartedModalOpen] = useState(false);
-    const [sessionDetails, setSessionDetails] = useState({
+  const [isSessionStartedModalOpen, setIsSessionStartedModalOpen] = useState(false);
+  const [sessionDetails, setSessionDetails] = useState({
     totalDurationSeconds: 150,
     taskContext: '',
     helperName: ''
@@ -235,8 +180,8 @@ const [showStatusPopup, setShowStatusPopup] = useState(false);
   };
 
   useEffect(() => {
-  if (storedUserId && !wsRef.current) {
-    console.log(`Raw value from localStorage: "${storedUserId}"`);    
+    if (storedUserId && !wsRef.current) {
+      console.log(`Raw value from localStorage: "${storedUserId}"`);
       const wsUrl = `ws://${backendServer}:8000/ws/${storedUserId}`;
       console.log("WebSocket URL:", wsUrl);
       const ws = new WebSocket(wsUrl);
@@ -244,64 +189,64 @@ const [showStatusPopup, setShowStatusPopup] = useState(false);
 
       ws.onopen = () => {
         console.log("WebSocket connection established");
-        let payload={
+        let payload = {
           cursor: 0,
           doc: ytext.toString(),
           name: storedUserId,
           timeStamp: new Date().getTime(),
         }
         console.log("Sending initial payload:", payload);
-        ws.send(JSON.stringify({event:'updateMaster',payload:payload}));
+        ws.send(JSON.stringify({ event: 'updateMaster', payload: payload }));
 
         console.log("Configuring personal editor WebSocket extension for user:", storedUserId);
         const playgroundUpdateExtension = createPersonalEditorUpdateExtension(ws, storedUserId);
         setPersonalEditorExtensions([python(), playgroundUpdateExtension]);
 
-    };
-    ws.onmessage = (event) => {
+      };
+      ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
         console.log("Received message:", data);
         if (data['event'] === 'run') {
-          console.log( data);
+          console.log(data);
           appendToHistory(data['stdout'], data['all']);
         }
         if (data['event'] === 'initial') {
           ytext.insert(0, data['payload']['doc']);
         }
-        if(data['event']=='notification'){
-          const context=data['payload']['context']
-          const graphData=data['payload']['suggestions']
+        if (data['event'] == 'notification') {
+          const context = data['payload']['context']
+          const graphData = data['payload']['suggestions']
           console.log("Graph data:", graphData);
           setContext(context);
           setCollabData(graphData);
           handleCollabModalOpen();
 
         }
-        if(data['event']=='StartHelpSession'){
-          if(data['payload']['helper']===storedUserId|| data['payload']['helpee']===storedUserId){
-            const totalDurationSeconds=data['payload']['time']
-            const taskContext= data['payload']['hint']+" please go over to their screen and help them. " 
-            const helperName=data['payload']['heper']
+        if (data['event'] == 'StartHelpSession') {
+          if (data['payload']['helper'] === storedUserId || data['payload']['helpee'] === storedUserId) {
+            const totalDurationSeconds = data['payload']['time']
+            const taskContext = data['payload']['hint'] + " please go over to their screen and help them. "
+            const helperName = data['payload']['heper']
             setSessionDetails({ totalDurationSeconds, taskContext, helperName });
             setIsSessionStartedModalOpen(true);
           }
         }
-        if(data['event']==='Suggestion'){
+        if (data['event'] === 'Suggestion') {
           const taskSuggestions = data['payload']['options'];
           console.log("Task suggestions:", taskSuggestions);
           setTaskSuggestionOptions(taskSuggestions['options']);
         }
-    }   
-      ws.onclose = (event) => { 
-          console.log(`WebSocket connection closed: Code=${event.code}, Reason=${event.reason}, WasClean=${event.wasClean}`);
+      }
+      ws.onclose = (event) => {
+        console.log(`WebSocket connection closed: Code=${event.code}, Reason=${event.reason}, WasClean=${event.wasClean}`);
       };
 
       ws.onerror = (error) => {
-          console.error("WebSocket specific error event:", error);
+        console.error("WebSocket specific error event:", error);
       };
 
-  }
-}, []); 
+    }
+  }, []);
 
   function clearCode() {
     setHistory([]);
@@ -312,12 +257,12 @@ const [showStatusPopup, setShowStatusPopup] = useState(false);
   async function testCodePlayground() {
     const code = personalCode
     const channel = storedUserId;
-    
-  
+
+
     // const [iconClass, setIconClass] = useState("fa-solid fa-flask");
-// IMPLEMENT SPINNER
+    // IMPLEMENT SPINNER
     // setIconClass("fa-solid fa-spinner");
-  
+
     await fetch(`http://${backendServer}:8000/testFunction`, {
       method: 'POST',
       headers: {
@@ -326,19 +271,19 @@ const [showStatusPopup, setShowStatusPopup] = useState(false);
       },
       body: JSON.stringify({ code: code, channel: channel }),
     });
-  console.log("testing personal code:", code);
+    console.log("testing personal code:", code);
   }
 
   function mergeCollaborativeCode() {
     const code = ytext.toString();
     // Implement your merge logic here
-   
-    
+
+
     console.log("Merging code:", code);
   }
   async function runPersonalCode() {
-    const code= personalCode;
-    const channel=storedUserId;
+    const code = personalCode;
+    const channel = storedUserId;
 
     try {
       await fetch(`http://${backendServer}:8000/test`, {
@@ -347,12 +292,14 @@ const [showStatusPopup, setShowStatusPopup] = useState(false);
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          code: code,channel: channel})});
-          console.log("Running personal code:", code);
+          code: code, channel: channel
+        })
+      });
+      console.log("Running personal code:", code);
     } catch (e) {
       console.error("Execution error:", e);
     }
-  }  
+  }
   function appendToHistory(output, all) {
     setHistory((prev) => [...prev, [new Date(), output, all]]);
   }
@@ -363,44 +310,44 @@ const [showStatusPopup, setShowStatusPopup] = useState(false);
     // Example: sendWebSocketMessage({ event: 'requestHelp', option: helpOption, userId: storedUserId });
     setHelpOption(null); // Reset selection
     closeHelp(); // Close the modal
-}
+  }
 
 
-const helpMe = () => {
-  openHelp();
-  fetch(`http://${backendServer}:8000/helpMe`, {
-    method: 'POST',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ id: id, choice: "Help", text: "" }),
-  })
-  .then(response => {
-    if (!response.ok) {
-      throw new Error('Network response was not ok');
-    }
-    return response.json();
-  })
-  .then(data => {
-    console.log('Help request successful:', data);
-  })
-  .catch(error => {
-    console.error('There was a problem with the help request:', error);
-  });
-};
+  const helpMe = () => {
+    openHelp();
+    fetch(`http://${backendServer}:8000/helpMe`, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ id: id, choice: "Help", text: "" }),
+    })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.json();
+      })
+      .then(data => {
+        console.log('Help request successful:', data);
+      })
+      .catch(error => {
+        console.error('There was a problem with the help request:', error);
+      });
+  };
 
-const editorRef = useRef<EditorView | null>(null);
+  const editorRef = useRef<EditorView | null>(null);
 
 
 
   return (
     <>
-      <Container fluid h={"90vh" } p={0}>
-          <PanelGroup direction="vertical">
-      
+      <Container fluid h={"90vh"} p={0}>
+        <PanelGroup direction="vertical">
+
           <Panel defaultSize={50} minSize={20}>
-          <PanelGroup direction="horizontal">
+            <PanelGroup direction="horizontal">
               {/* --- Original Team Editor Panel --- */}
               <Panel defaultSize={50} minSize={20}> {/* Adjust defaultSize as needed */}
                 <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -411,32 +358,31 @@ const editorRef = useRef<EditorView | null>(null);
                     </Group>
                   </Group>
                   <div style={{ flexGrow: 1, overflow: 'auto', position: 'relative' }}> {/* Allow CodeMirror to take remaining space */}
-                     <CodeMirror
-                       height="100%" 
-                       value={code}
-                       extensions={[python(),yCollab(ytext,provider.awareness), peteField]} 
-                       style={{ height: '100%' }} 
-                       onCreateEditor={(view) => {
+                    <CodeMirror
+                      height="100%"
+                      value={code}
+                      extensions={[python(), yCollab(ytext, provider.awareness), peteField]}
+                      style={{ height: '100%' }}
+                      onCreateEditor={(view) => {
                         editorRef.current = view;
                       }}
-                       onChange={(value) => {
-                          if (typingTimer.current) {
-                            clearTimeout(typingTimer.current);
-                          }
+                      onChange={(value) => {
+                        if (typingTimer.current) {
+                          clearTimeout(typingTimer.current);
+                        }
 
-                          typingTimer.current = setTimeout(() => {
-                            if (!editorRef.current) return;
+                        typingTimer.current = setTimeout(() => {
+                          if (!editorRef.current) return;
 
-                            const pos = editorRef.current.state.selection.main.head;
+                          const pos = editorRef.current.state.selection.main.head;
 
-                            editorRef.current.dispatch({
-                              effects: addPeteEffect.of(pos)
-                            });
-                          }, 2000);
-                        }}
-                     />
-
-                     {showStatusPopup && (
+                          editorRef.current.dispatch({
+                            effects: addPeteEffect.of(pos)
+                          });
+                        }, 2000);
+                      }}
+                    />
+                    {showStatusPopup && (
                       <div
                         style={{
                           position: "absolute",
@@ -459,21 +405,6 @@ const editorRef = useRef<EditorView | null>(null);
                             </div>
                           </div>
                         </div>
-
-                        {/* <button
-                          style={{
-                            width: "100%",
-                            padding: "6px",
-                            background: peteAvailable ? "#4CAF50" : "#777",
-                            color: "white",
-                            border: "none",
-                            borderRadius: "6px",
-                            marginBottom: "8px",
-                            cursor: "pointer"
-                          }}
-                        >
-                          {peteAvailable ? "Help Me" : "Help Me When Free"}
-                        </button> */}
 
                         <button
                           style={{
@@ -498,7 +429,6 @@ const editorRef = useRef<EditorView | null>(null);
                                 widget.innerHTML = "👨‍💻 Pete will ping when free";
                               }
                             }
-
                             setShowStatusPopup(false);
                           }}
                         >
@@ -516,10 +446,10 @@ const editorRef = useRef<EditorView | null>(null);
                           }}
                           onClick={() => {
                             const widget = document.getElementById("pete-inline-widget");
-                            
+
                             if (widget) {
                               widget.style.background = "#2d2d2d"
-                              widget.innerHTML =  "👨‍💻 Pete can help with <b>loop logic</b>"
+                              widget.innerHTML = "👨‍💻 Pete can help with <b>loop logic</b>"
                             }
 
                             setShowStatusPopup(false)
@@ -529,177 +459,123 @@ const editorRef = useRef<EditorView | null>(null);
                         </button>
                       </div>
                     )}
-
-
-
-
-
-
-                     {showSuggestion && (
-                        <div style={{
-                          position: "absolute",
-                          bottom: "120px",
-                          right: "60px",
-                          background: "#1e1e1e",
-                          color: "white",
-                          padding: "8px 12px",
-                          borderRadius: "8px",
-                          fontSize: "14px",
-                          boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-                          cursor: "pointer"
-                        }}>
-                          <span
-                            onClick={() => {
-                              setPeteAvailable(prev => !prev);
-                              setShowStatusPopup(true);
-                            }}
-                            style={{ marginRight: "8px", fontSize: "18px" }}
-                          >
-                            👨‍💻
-                          </span>
-                          Pete can help with <b>loop logic and numeral mapping</b>
-                        </div>
-                      )}
-                      {/* {showStatusPopup && (
-                        <div style={{
-                          position: "absolute",
-                          bottom: "180px",
-                          right: "60px",
-                          background: "white",
-                          color: "black",
-                          padding: "16px",
-                          borderRadius: "10px",
-                          width: "220px",
-                          boxShadow: "0 6px 16px rgba(0,0,0,0.25)"
-                        }}>
-                          <div style={{ display: "flex", alignItems: "center", marginBottom: "10px" }}>
-                            <span style={{ fontSize: "24px", marginRight: "10px" }}>👨‍💻</span>
-                            <div>
-                              <div><b>Pete</b></div>
-                              <div style={{ color: peteAvailable ? "green" : "red" }}>
-                                {peteAvailable ? "● Available" : "● Deep Work"}
-                              </div>
-                            </div>
-                          </div>
-
-                          <button style={{
-                            width: "100%",
-                            padding: "6px",
-                            background: peteAvailable ? "#4CAF50" : "#888",
-                            color: "white",
-                            border: "none",
-                            borderRadius: "6px",
-                            marginBottom: "6px"
-                          }}>
-                            {peteAvailable ? "Help Me" : "Help Me When Free"}
-                          </button>
-
-                          <button
-                            style={{
-                              width: "100%",
-                              padding: "6px",
-                              background: "#eee",
-                              border: "none",
-                              borderRadius: "6px"
-                            }}
-                            onClick={() => setShowStatusPopup(false)}
-                          >
-                            Close
-                          </button>
-                        </div>
-                      )} */}
+                    {showSuggestion && (
+                      <div style={{
+                        position: "absolute",
+                        bottom: "120px",
+                        right: "60px",
+                        background: "#1e1e1e",
+                        color: "white",
+                        padding: "8px 12px",
+                        borderRadius: "8px",
+                        fontSize: "14px",
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+                        cursor: "pointer"
+                      }}>
+                        <span
+                          onClick={() => {
+                            setPeteAvailable(prev => !prev);
+                            setShowStatusPopup(true);
+                          }}
+                          style={{ marginRight: "8px", fontSize: "18px" }}
+                        >
+                          👨‍💻
+                        </span>
+                        Pete can help with <b>loop logic and numeral mapping</b>
+                      </div>
+                    )}
                   </div>
                 </div>
               </Panel>
               {/* NEW: Resize Handle */}
               <PanelResizeHandle className={styles.ResizeHandleOuter}>
-                 <div className={styles.ResizeHandleInner} style={{backgroundColor: '#eee', height: '5px'}}></div> {/* Basic styling */}
+                <div className={styles.ResizeHandleInner} style={{ backgroundColor: '#eee', height: '5px' }}></div> {/* Basic styling */}
               </PanelResizeHandle>
-                   <Panel defaultSize={50} minSize={20}>
-                  {/* Flex container to manage layout */}
-                  <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                    {/* Button Group - should not grow or shrink */}
-                    <Group justify="space-between" p="xs" style={{ borderBottom: '1px solid #ccc', flexShrink: 0 }}>
-                      <Title order={3}>Personal Editor</Title>
-                      <Group>
-                        <Button onClick={testCodePlayground} size='compact-xs'>Test</Button>
-                        <Button onClick={runPersonalCode} size='compact-xs'>Run</Button>
-                        <Button onClick={clearCode} size='compact-xs'>Clear</Button>
-                        <Button onClick={helpMe} size='compact-xs'>Flag for Help</Button>
-                      </Group>
-                    </Group>
-                    {/* CodeMirror Container - should grow and scroll */}
-                    <div style={{ flexGrow: 1, overflow: 'auto', minHeight: 0 }}> {/* Added minHeight: 0 */}
-                      <CodeMirror
-                        height="100%" // Changed from 500px to 100%
-                        value={personalCode}
-                        onChange={(value) => setPersonalCode(value)}
-                        extensions={personalEditorExtensions}
-                        style={{ height: '100%' }} // Ensure CM fills its container
-                      />
-                    </div>
-                  </div>
-                </Panel>
-              </PanelGroup>
-            </Panel>
-        <PanelResizeHandle />
-
-              {/* NEW: Panel below Team Editor */}
               <Panel defaultSize={50} minSize={20}>
-              <PanelGroup direction="horizontal">
-       <Panel defaultSize={50}>
-       <div style={{ padding: '10px' }}>
+                {/* Flex container to manage layout */}
+                <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                  {/* Button Group - should not grow or shrink */}
+                  <Group justify="space-between" p="xs" style={{ borderBottom: '1px solid #ccc', flexShrink: 0 }}>
+                    <Title order={3}>Personal Editor</Title>
+                    <Group>
+                      <Button onClick={testCodePlayground} size='compact-xs'>Test</Button>
+                      <Button onClick={runPersonalCode} size='compact-xs'>Run</Button>
+                      <Button onClick={clearCode} size='compact-xs'>Clear</Button>
+                      <Button onClick={helpMe} size='compact-xs'>Flag for Help</Button>
+                    </Group>
+                  </Group>
+                  {/* CodeMirror Container - should grow and scroll */}
+                  <div style={{ flexGrow: 1, overflow: 'auto', minHeight: 0 }}> {/* Added minHeight: 0 */}
+                    <CodeMirror
+                      height="100%" // Changed from 500px to 100%
+                      value={personalCode}
+                      onChange={(value) => setPersonalCode(value)}
+                      extensions={personalEditorExtensions}
+                      style={{ height: '100%' }} // Ensure CM fills its container
+                    />
+                  </div>
+                </div>
+              </Panel>
+            </PanelGroup>
+          </Panel>
+          <PanelResizeHandle />
+
+          {/* NEW: Panel below Team Editor */}
+          <Panel defaultSize={50} minSize={20}>
+            <PanelGroup direction="horizontal">
+              <Panel defaultSize={50}>
+                <div style={{ padding: '10px' }}>
+                  <ReactFlowProvider>
+
+                    <GraphComponent />
+                  </ReactFlowProvider>
+                </div>
+              </Panel>
+              <PanelResizeHandle />
+              <Panel defaultSize={50}>
+                <div className={styles.Output} id="output">
+                  <Title order={3}>Output</Title>
+                  <div style={{ overflowY: 'auto', maxHeight: '350px' }}>
+                    {history.map(([timestamp, output, isCollaborative], i) => {
+                      const HOURS = timestamp.getHours().toString().padStart(2, '0');
+                      const MINUTES = timestamp.getMinutes().toString().padStart(2, '0');
+                      const SECONDS = timestamp.getSeconds().toString().padStart(2, '0');
+
+                      return (
+                        <div key={i}>
+                          <div className={`outputLine ${i % 2 === 1 ? 'active' : ''}`}>
+                            <div style={{ whiteSpace: 'pre-wrap' }}><ReactAnsi logStyle={{ backgroundColor: 'white', color: 'black', fontSize: '10px' }} log={output} /></div>
+                            <p>{`${HOURS}:${MINUTES}:${SECONDS}`}</p>
+                          </div>
+                          <div
+                            className={`outputLine ${i % 2 === 1 ? 'active' : ''}`}
+                            style={{ color: 'yellow' }}
+                          >
+                            <i>{isCollaborative ? 'Ran by Collaborative Editor' : 'Ran from Personal Playground'}</i>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </Panel>
+            </PanelGroup>
+          </Panel>
+        </PanelGroup>
+      </Container>
+
+      <Modal size="75%" opened={opened} onClose={close} title="Progress Tree" centered>
+        <div style={{ width: "100%", height: 500 }}>
+          {/* <Tree /> */}
           <ReactFlowProvider>
 
-<GraphComponent />
-</ReactFlowProvider>
-          </div>
-       </Panel>
-       <PanelResizeHandle />
-        <Panel defaultSize={50}>
-        <div className={styles.Output} id="output">
-        <Title order={3}>Output</Title>
-        <div style={{ overflowY: 'auto', maxHeight: '350px' }}>
-          {history.map(([timestamp, output, isCollaborative], i) => {
-            const HOURS = timestamp.getHours().toString().padStart(2, '0');
-            const MINUTES = timestamp.getMinutes().toString().padStart(2, '0');
-            const SECONDS = timestamp.getSeconds().toString().padStart(2, '0');
+            <GraphComponent />
+          </ReactFlowProvider>
 
-            return (
-              <div key={i}>
-                <div className={`outputLine ${i % 2 === 1 ? 'active' : ''}`}>
-                  <div style={{ whiteSpace: 'pre-wrap' }}><ReactAnsi logStyle={{backgroundColor: 'white',color:'black', fontSize: '10px'}} log={output}/></div>
-                  <p>{`${HOURS}:${MINUTES}:${SECONDS}`}</p>
-                </div>
-                <div
-                  className={`outputLine ${i % 2 === 1 ? 'active' : ''}`}
-                  style={{ color: 'yellow' }}
-                >
-                  <i>{isCollaborative ? 'Ran by Collaborative Editor' : 'Ran from Personal Playground'}</i>
-                </div>
-              </div>
-            );
-          })}
         </div>
-      </div>
-        </Panel>
-      </PanelGroup>
-      </Panel>
-    </PanelGroup>
-    </Container>
-
-<Modal size="75%" opened={opened} onClose={close} title="Progress Tree" centered>
-  <div style={{ width: "100%", height: 500 }}>
-    {/* <Tree /> */}
-    <ReactFlowProvider>
-
-    <GraphComponent />
-    </ReactFlowProvider>
-
-  </div>
-</Modal>
-{isCollabModalOpen && (<CollaborativeOpportunityModal onClose={handleCollabModalClose} predictions={collabData} context={context} id={storedUserId} />
-)}
+      </Modal>
+      {isCollabModalOpen && (<CollaborativeOpportunityModal onClose={handleCollabModalClose} predictions={collabData} context={context} id={storedUserId} />
+      )}
 
 
       {isSessionStartedModalOpen && (
@@ -711,13 +587,13 @@ const editorRef = useRef<EditorView | null>(null);
           helperName={sessionDetails.helperName}
         />
       )}
- <HelpModal
-      isOpen={helpOpened}
-      id={storedUserId}
-      onClose={() => {
+      <HelpModal
+        isOpen={helpOpened}
+        id={storedUserId}
+        onClose={() => {
           closeHelp();
           setHelpOption(null);
-      }}
+        }}
       >
 
       </HelpModal>
@@ -728,7 +604,7 @@ const editorRef = useRef<EditorView | null>(null);
 const ydoc = new Y.Doc();
 const provider = new WebrtcProvider('prime-collab-room-demo', ydoc, {
   // signaling: ['wss://prime-lab.cs.vt.edu:4444'],
-    signaling: ['http://localhost:4444'], //this is for local testing
+  signaling: ['http://localhost:4444'], //this is for local testing
   peerOpts: {
     config: {
       iceServers: [
