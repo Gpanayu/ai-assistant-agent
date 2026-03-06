@@ -18,8 +18,81 @@ import { EditorView, Decoration, WidgetType, GutterMarker, gutter } from "@codem
 import { createPersonalEditorUpdateExtension } from './modals/extension';
 import HelpSessionStartedModal from './modals/HelpSessionModal';
 
-const TOM_ASSIST_ANCHOR = "    # TODO Tom: update order.cost using menu.dishes[item]";
 const HELPER_ASSIST_ANCHOR = "    # TODO Tom: update order.cost using menu.dishes[item]";
+type LocalVariantBox = {
+  id: string;
+  lineNumber: number;
+  options: string[];
+  activeIndex: number;
+};
+
+type LineChange = {
+  lineNumber: number;
+  previousLine: string;
+  nextLine: string;
+};
+
+function detectLineChange(previousCode: string, nextCode: string): LineChange | null {
+  if (previousCode === nextCode) return null;
+  const previousLines = previousCode.split("\n");
+  const nextLines = nextCode.split("\n");
+
+  let firstDiff = 0;
+  while (
+    firstDiff < previousLines.length &&
+    firstDiff < nextLines.length &&
+    previousLines[firstDiff] === nextLines[firstDiff]
+  ) {
+    firstDiff += 1;
+  }
+
+  const previousLine = previousLines[firstDiff] ?? "";
+  const nextLine = nextLines[firstDiff] ?? "";
+  if (previousLine === nextLine) return null;
+
+  return {
+    lineNumber: firstDiff + 1,
+    previousLine,
+    nextLine,
+  };
+}
+
+function upsertLocalVariantBox(boxes: LocalVariantBox[], change: LineChange): LocalVariantBox[] {
+  const existing = boxes.find((box) => box.lineNumber === change.lineNumber);
+  if (!existing) {
+    return [
+      ...boxes,
+      {
+        id: `line-${change.lineNumber}`,
+        lineNumber: change.lineNumber,
+        options: [change.previousLine, change.nextLine],
+        activeIndex: 1,
+      },
+    ];
+  }
+
+  const nextOptions = existing.options.includes(change.nextLine)
+    ? existing.options
+    : [...existing.options, change.nextLine].slice(-4);
+  const nextActiveIndex = nextOptions.findIndex((option) => option === change.nextLine);
+
+  return boxes.map((box) =>
+    box.id === existing.id
+      ? {
+        ...box,
+        options: nextOptions,
+        activeIndex: Math.max(0, nextActiveIndex),
+      }
+      : box
+  );
+}
+
+function replaceLineAt(code: string, lineNumber: number, nextLine: string): string {
+  const lines = code.split("\n");
+  if (lineNumber < 1 || lineNumber > lines.length) return code;
+  lines[lineNumber - 1] = nextLine;
+  return lines.join("\n");
+}
 
 class PeerAssistWidget extends WidgetType {
   constructor(private readonly text: string) {
@@ -47,6 +120,100 @@ class PeerAssistWidget extends WidgetType {
   }
 }
 
+class LocalVariantTabsWidget extends WidgetType {
+  constructor(
+    private readonly box: LocalVariantBox,
+    private readonly onSelect: (boxId: string, optionIndex: number) => void
+  ) {
+    super();
+  }
+
+  eq(other: LocalVariantTabsWidget) {
+    return (
+      this.box.id === other.box.id &&
+      this.box.activeIndex === other.box.activeIndex &&
+      this.box.options.join("|") === other.box.options.join("|")
+    );
+  }
+
+  toDOM() {
+    const wrapper = document.createElement("div");
+    wrapper.style.display = "flex";
+    wrapper.style.alignItems = "center";
+    wrapper.style.gap = "6px";
+    wrapper.style.padding = "2px 0 6px 0";
+
+    const label = document.createElement("span");
+    label.textContent = "variants";
+    label.style.fontSize = "11px";
+    label.style.color = "#64748b";
+    label.style.fontWeight = "700";
+    wrapper.appendChild(label);
+
+    this.box.options.forEach((option, index) => {
+      const button = document.createElement("button");
+      button.textContent = `v${index + 1}`;
+      button.title = option || "<empty line>";
+      button.style.fontSize = "11px";
+      button.style.padding = "2px 8px";
+      button.style.borderRadius = "10px";
+      button.style.border = "1px solid #cbd5e1";
+      button.style.background = index === this.box.activeIndex ? "#0ea5e9" : "#f8fafc";
+      button.style.color = index === this.box.activeIndex ? "#ffffff" : "#334155";
+      button.style.cursor = "pointer";
+      button.onclick = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this.onSelect(this.box.id, index);
+      };
+      wrapper.appendChild(button);
+    });
+
+    return wrapper;
+  }
+
+  ignoreEvent() {
+    return true;
+  }
+}
+
+function buildLocalVariantDecorations(
+  state: EditorState,
+  boxes: LocalVariantBox[],
+  onSelect: (boxId: string, optionIndex: number) => void
+) {
+  const builder = new RangeSetBuilder<Decoration>();
+  for (const box of boxes) {
+    if (box.lineNumber < 1 || box.lineNumber > state.doc.lines) continue;
+    const line = state.doc.line(box.lineNumber);
+    builder.add(
+      line.from,
+      line.from,
+      Decoration.widget({
+        widget: new LocalVariantTabsWidget(box, onSelect),
+        side: -1,
+        block: true,
+      })
+    );
+  }
+  return builder.finish();
+}
+
+function createLocalVariantField(
+  boxes: LocalVariantBox[],
+  onSelect: (boxId: string, optionIndex: number) => void
+) {
+  return StateField.define({
+    create(state) {
+      return buildLocalVariantDecorations(state, boxes, onSelect);
+    },
+    update(_decorations, tr) {
+      return buildLocalVariantDecorations(tr.state, boxes, onSelect);
+    },
+    provide: (f) => EditorView.decorations.from(f),
+  });
+}
+
 function buildAssistDecoration(state: EditorState, message: string, anchorText: string) {
   const anchor = state.doc.toString().indexOf(anchorText);
   if (anchor < 0) return Decoration.none;
@@ -72,10 +239,6 @@ function createAssistField(message: string, anchorText: string) {
   });
 }
 
-const tomAssistField = createAssistField(
-  "👨‍💻 Pete is here helping now",
-  TOM_ASSIST_ANCHOR
-);
 const helperAssistField = createAssistField(
   "👨‍💻 Pete is here helping now",
   HELPER_ASSIST_ANCHOR
@@ -433,20 +596,6 @@ def remove_from_order(customer: Customer, order_id: int, menu: Menu, item: str):
     restaurant.inventory[item] -= 1
     return True
 `;
-  const peteTomAssistStarter = `# Pete helper draft for Tom's method
-def add_to_order(customer, order_id, menu, item):
-    if order_id not in customer.order:
-        print("No order found")
-        return
-    if item not in menu.dishes:
-        print("Not on menu")
-        return
-
-    order = customer.order[order_id]
-    order.items.append(item)
-    order.cost += menu.dishes[item]
-    print(f"Added {item}: {menu.dishes[item]}")
-`;
   const tomMethodSignature = "def add_to_order";
 
   const [code, setCode] = useState(defaultCode);
@@ -457,6 +606,8 @@ def add_to_order(customer, order_id, menu, item):
   const [helpOption, setHelpOption] = useState<string | null>(null);
   const [history, setHistory] = useState([]);
   const [personalCode, setPersonalCode] = useState(initialPersonalMethod);
+  const [helpRequestCode, setHelpRequestCode] = useState(tomLiveMockCode);
+  const [helpLocalVariants, setHelpLocalVariants] = useState<LocalVariantBox[]>([]);
   const [personalKeystrokes, setPersonalKeystrokes] = useState(0);
   const [showHelpTomSuggestion, setShowHelpTomSuggestion] = useState(false);
   const [isTomCardVisible, setTomCardVisible] = useState(false);
@@ -464,6 +615,8 @@ def add_to_order(customer, order_id, menu, item):
   const backendServer = "localhost";
   const wsRef = useRef<WebSocket | null>(null);
   const teamEditorRef = useRef<EditorView | null>(null);
+  const helpEditorRef = useRef<EditorView | null>(null);
+  const previousHelpCodeRef = useRef(tomLiveMockCode);
   const id = localStorage.getItem('participant-id') || 'D';
   const storedUserId = id.replace(/"/g, '');
   const [collabData, setCollabData] = useState([]);
@@ -502,11 +655,11 @@ def add_to_order(customer, order_id, menu, item):
     setIsSessionStartedModalOpen(false);
   };
 
-  const jumpToTomMethod = (methodSignature: string) => {
-    if (!teamEditorRef.current) {
+  const jumpToMethod = (editorRef: { current: EditorView | null }, methodSignature: string) => {
+    if (!editorRef.current) {
       return;
     }
-    const view = teamEditorRef.current;
+    const view = editorRef.current;
     const doc = view.state.doc.toString();
     const cursorPos = doc.indexOf(methodSignature);
     if (cursorPos < 0) {
@@ -520,12 +673,17 @@ def add_to_order(customer, order_id, menu, item):
   };
 
   const startHelpingTom = () => {
+    const sharedTomCode = yTomHelpText.length > 0 ? yTomHelpText.toString() : tomLiveMockCode;
+    if (yTomHelpText.length === 0) {
+      yTomHelpText.insert(0, tomLiveMockCode);
+    }
     setHelperAssistActive(true);
     setShowHelpTomSuggestion(false);
-    setCode(tomLiveMockCode);
-    setPersonalCode(tomLiveMockCode);
+    setHelpRequestCode(sharedTomCode);
+    previousHelpCodeRef.current = sharedTomCode;
+    setHelpLocalVariants([]);
     window.requestAnimationFrame(() => {
-      jumpToTomMethod(tomMethodSignature);
+      jumpToMethod(helpEditorRef, tomMethodSignature);
     });
   };
 
@@ -534,44 +692,40 @@ def add_to_order(customer, order_id, menu, item):
     setPersonalKeystrokes((prev) => prev + 1);
   };
 
+  const handleHelpRequestCodeChange = (value: string) => {
+    const change = detectLineChange(previousHelpCodeRef.current, value);
+    if (change) {
+      setHelpLocalVariants((prev) => upsertLocalVariantBox(prev, change));
+    }
+    previousHelpCodeRef.current = value;
+    setHelpRequestCode(value);
+    setPersonalKeystrokes((prev) => prev + 1);
+  };
+
+  const handleLocalVariantSelect = (boxId: string, optionIndex: number) => {
+    const selectedBox = helpLocalVariants.find((box) => box.id === boxId);
+    if (!selectedBox) return;
+
+    const selectedLine = selectedBox.options[optionIndex];
+    setHelpLocalVariants((prev) =>
+      prev.map((box) =>
+        box.id === boxId
+          ? { ...box, activeIndex: optionIndex }
+          : box
+      )
+    );
+    setHelpRequestCode((prevCode) => {
+      const nextCode = replaceLineAt(prevCode, selectedBox.lineNumber, selectedLine);
+      previousHelpCodeRef.current = nextCode;
+      return nextCode;
+    });
+  };
+
   useEffect(() => {
     if (!helperAssistActive && !isTomCardVisible && personalKeystrokes >= 20) {
       setTomCardVisible(true);
     }
   }, [personalKeystrokes, helperAssistActive, isTomCardVisible]);
-
-  useEffect(() => {
-    if (!helperAssistActive) return;
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
-    let cancelled = false;
-
-    const tick = () => {
-      if (cancelled || !teamEditorRef.current) return;
-      const view = teamEditorRef.current;
-      const doc = view.state.doc.toString();
-      const confusionAnchor = doc.indexOf("TODO Tom: update order.cost");
-      const fallbackAnchor = doc.indexOf(tomMethodSignature);
-      const base = confusionAnchor >= 0 ? confusionAnchor : Math.max(0, fallbackAnchor);
-      const shouldMove = Math.random() < 0.35;
-      const jitter = shouldMove ? Math.floor(Math.random() * 7) - 3 : 0;
-      const next = Math.max(0, Math.min(view.state.doc.length, base + jitter));
-
-      view.dispatch({
-        selection: { anchor: next },
-        scrollIntoView: true,
-      });
-
-      timeoutId = setTimeout(tick, 1800 + Math.floor(Math.random() * 2400));
-    };
-
-    timeoutId = setTimeout(tick, 1200);
-    return () => {
-      cancelled = true;
-      if (timeoutId) clearTimeout(timeoutId);
-    };
-  }, [helperAssistActive, tomMethodSignature]);
-
-  // helpee side timing mock removed for helper-side demo.
 
   useEffect(() => {
     if (storedUserId && !wsRef.current) {
@@ -649,7 +803,7 @@ def add_to_order(customer, order_id, menu, item):
   }
 
   async function testCodePlayground() {
-    const code = personalCode
+    const code = helperAssistActive ? helpRequestCode : personalCode;
     const channel = storedUserId;
 
 
@@ -677,15 +831,8 @@ def add_to_order(customer, order_id, menu, item):
     console.log("testing personal code:", code);
   }
 
-  function mergeCollaborativeCode() {
-    const code = ytext.toString();
-    // Implement your merge logic here
-
-
-    console.log("Merging code:", code);
-  }
   async function runPersonalCode() {
-    const code = personalCode;
+    const code = helperAssistActive ? helpRequestCode : personalCode;
     const channel = storedUserId;
 
     try {
@@ -752,27 +899,7 @@ def add_to_order(customer, order_id, menu, item):
                 <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                   <Group justify="space-between" p="xs" style={{ borderBottom: '1px solid #ccc' }}>
                     <Group gap="xs" align="center">
-                      {helperAssistActive && (
-                        <div
-                          style={{
-                            width: "30px",
-                            height: "30px",
-                            borderRadius: "50%",
-                            background: "#334155",
-                            color: "white",
-                            fontWeight: 700,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontSize: "14px",
-                            boxSizing: "border-box",
-                            border: isTomInterruptible ? "3px solid #22c55e" : "3px solid #ef4444"
-                          }}
-                        >
-                          T
-                        </div>
-                      )}
-                      <Title order={3}>{helperAssistActive ? "Tom's Help Request" : "Team Editor"}</Title>
+                      <Title order={3}>Team Editor</Title>
                     </Group>
                   </Group>
                   <div style={{ flexGrow: 1, overflow: 'auto', position: 'relative' }}> {/* Allow CodeMirror to take remaining space */}
@@ -786,7 +913,6 @@ def add_to_order(customer, order_id, menu, item):
                         runIconField,
                         runIconGutter,
                         runIconGutterTheme,
-                        ...(helperAssistActive ? [tomAssistField] : []),
                       ]}
                       style={{ height: '100%' }}
                       onCreateEditor={(view) => {
@@ -867,7 +993,7 @@ def add_to_order(customer, order_id, menu, item):
                 <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                   {/* Button Group - should not grow or shrink */}
                   <Group justify="space-between" p="xs" style={{ borderBottom: '1px solid #ccc', flexShrink: 0 }}>
-                    <Title order={3}>Personal Editor</Title>
+                    <Title order={3}>{helperAssistActive ? "Tom's Help Request" : "Personal Editor"}</Title>
                     <Group>
                       <Button onClick={testCodePlayground} size='compact-xs'>Test</Button>
                       <Button onClick={runPersonalCode} size='compact-xs'>Run</Button>
@@ -903,21 +1029,26 @@ def add_to_order(customer, order_id, menu, item):
                     )}
                     {helperAssistActive ? (
                       <div style={{ display: "flex", flexDirection: "column", height: "100%", padding: "10px" }}>
-                        <div style={{ fontSize: "12px", fontWeight: 700, color: "#334155" }}>
-                          Your editable draft for Tom
+                        <div style={{ fontSize: "12px", fontWeight: 700, color: "#334155", marginBottom: "8px" }}>
+                          Shared help space. Inline local variants appear above edited lines.
                         </div>
                         <div style={{ flexGrow: 1, minHeight: 0 }}>
                           <CodeMirror
                             height="100%"
-                            value={personalCode}
-                            onChange={handlePersonalCodeChange}
+                            value={helpRequestCode}
+                            onCreateEditor={(view) => {
+                              helpEditorRef.current = view;
+                            }}
+                            onChange={handleHelpRequestCodeChange}
                             extensions={[
-                              ...personalEditorExtensions,
+                              python(),
+                              yCollab(yTomHelpText, provider.awareness),
                               purpleCaretTheme,
                               runIconField,
                               runIconGutter,
                               runIconGutterTheme,
                               helperAssistField,
+                              createLocalVariantField(helpLocalVariants, handleLocalVariantSelect),
                             ]}
                             style={{ height: "100%" }}
                           />
@@ -1060,6 +1191,7 @@ const provider = new WebrtcProvider('prime-collab-room-demo', ydoc, {
   },
 });
 const ytext = ydoc.getText('codemirror');
+const yTomHelpText = ydoc.getText('tom-help-request');
 
 const userColors = [
   { color: '#30bced', light: '#30bced33' },
