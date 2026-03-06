@@ -18,7 +18,6 @@ import { EditorView, Decoration, WidgetType, GutterMarker, gutter } from "@codem
 import { createPersonalEditorUpdateExtension } from './modals/extension';
 import HelpSessionStartedModal from './modals/HelpSessionModal';
 
-const REFERENCE_HIGHLIGHT_LINES = [2, 3, 5, 6, 7, 8, 9];
 const TOM_ASSIST_ANCHOR = "    # TODO Tom: update order.cost using menu.dishes[item]";
 const HELPER_ASSIST_ANCHOR = "    # TODO Tom: update order.cost using menu.dishes[item]";
 
@@ -47,35 +46,6 @@ class PeerAssistWidget extends WidgetType {
     return true;
   }
 }
-
-function buildReferenceDecorations(state: EditorState) {
-  const decorations = [];
-  for (const lineNo of REFERENCE_HIGHLIGHT_LINES) {
-    if (lineNo > state.doc.lines) continue;
-    const line = state.doc.line(lineNo);
-    decorations.push(
-      Decoration.line({ class: "cm-reference-highlight" }).range(line.from)
-    );
-  }
-  return Decoration.set(decorations);
-}
-
-const referenceHighlightField = StateField.define({
-  create(state) {
-    return buildReferenceDecorations(state);
-  },
-  update(decorations, tr) {
-    if (!tr.docChanged) return decorations;
-    return buildReferenceDecorations(tr.state);
-  },
-  provide: (f) => EditorView.decorations.from(f),
-});
-
-const referenceHighlightTheme = EditorView.theme({
-  ".cm-line.cm-reference-highlight": {
-    backgroundColor: "#fff7d6",
-  },
-});
 
 function buildAssistDecoration(state: EditorState, message: string, anchorText: string) {
   const anchor = state.doc.toString().indexOf(anchorText);
@@ -462,22 +432,6 @@ def remove_from_order(customer: Customer, order_id: int, menu: Menu, item: str):
         return False
     restaurant.inventory[item] -= 1
     return True
-`;
-  const peteReferenceCode = `# Pete solved a similar dictionary-pattern task earlier
-def inventory_helper(restaurant, item):
-    if item not in restaurant.inventory:
-        return False
-    if restaurant.inventory[item] <= 0:
-        return False
-    restaurant.inventory[item] -= 1
-    return True
-
-def restock_inventory(restaurant, item, amount):
-    if item in restaurant.inventory:
-        restaurant.inventory[item] += amount
-        print(f"Restocked {item}. New quantity: {restaurant.inventory[item]}")
-    else:
-        print(f"{item} not found in inventory.")
 `;
   const peteTomAssistStarter = `# Pete helper draft for Tom's method
 def add_to_order(customer, order_id, menu, item):
@@ -948,7 +902,7 @@ def add_to_order(customer, order_id, menu, item):
                       </div>
                     )}
                     {helperAssistActive ? (
-                      <div style={{ display: "flex", flexDirection: "column", gap: "8px", height: "100%", padding: "10px" }}>
+                      <div style={{ display: "flex", flexDirection: "column", height: "100%", padding: "10px" }}>
                         <div style={{ fontSize: "12px", fontWeight: 700, color: "#334155" }}>
                           Your editable draft for Tom
                         </div>
@@ -966,25 +920,6 @@ def add_to_order(customer, order_id, menu, item):
                               helperAssistField,
                             ]}
                             style={{ height: "100%" }}
-                          />
-                        </div>
-                        <div
-                          style={{
-                            borderRadius: "8px",
-                            border: "1px solid #cbd5e1",
-                            background: "#f1f5f9",
-                            padding: "8px"
-                          }}
-                        >
-                          <div style={{ fontSize: "11px", fontWeight: 700, color: "#475569", marginBottom: "6px" }}>
-                            Pete's similar past solution (read-only reference)
-                          </div>
-                          <CodeMirror
-                            height="170px"
-                            value={peteReferenceCode}
-                            editable={false}
-                            extensions={[python(), referenceHighlightField, referenceHighlightTheme]}
-                            style={{ opacity: 0.8 }}
                           />
                         </div>
                       </div>
