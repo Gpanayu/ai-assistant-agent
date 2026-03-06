@@ -71,17 +71,14 @@ function upsertLocalVariantBox(boxes: LocalVariantBox[], change: LineChange): Lo
     ];
   }
 
-  const nextOptions = existing.options.includes(change.nextLine)
-    ? existing.options
-    : [...existing.options, change.nextLine].slice(-4);
-  const nextActiveIndex = nextOptions.findIndex((option) => option === change.nextLine);
-
   return boxes.map((box) =>
     box.id === existing.id
       ? {
         ...box,
-        options: nextOptions,
-        activeIndex: Math.max(0, nextActiveIndex),
+        // Keep version count stable while typing: edit the currently selected version in-place.
+        options: box.options.map((option, index) =>
+          index === box.activeIndex ? change.nextLine : option
+        ),
       }
       : box
   );
@@ -183,7 +180,11 @@ function buildLocalVariantDecorations(
   onSelect: (boxId: string, optionIndex: number) => void
 ) {
   const builder = new RangeSetBuilder<Decoration>();
-  for (const box of boxes) {
+  const sortedBoxes = [...boxes].sort((a, b) => {
+    if (a.lineNumber !== b.lineNumber) return a.lineNumber - b.lineNumber;
+    return a.id.localeCompare(b.id);
+  });
+  for (const box of sortedBoxes) {
     if (box.lineNumber < 1 || box.lineNumber > state.doc.lines) continue;
     const line = state.doc.line(box.lineNumber);
     builder.add(
