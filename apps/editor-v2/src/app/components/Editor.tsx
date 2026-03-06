@@ -98,6 +98,7 @@ class PeerAssistWidget extends WidgetType {
 
   toDOM() {
     const span = document.createElement("span");
+    span.className = "cm-peer-assist-chip";
     span.style.marginLeft = "8px";
     span.style.padding = "2px 8px";
     span.style.borderRadius = "999px";
@@ -597,6 +598,22 @@ def remove_from_order(customer: Customer, order_id: int, menu: Menu, item: str):
     restaurant.inventory[item] -= 1
     return True
 `;
+  const peteReferenceCode = `# Pete solved a similar dictionary-pattern task earlier
+def inventory_helper(restaurant, item):
+    if item not in restaurant.inventory:
+        return False
+    if restaurant.inventory[item] <= 0:
+        return False
+    restaurant.inventory[item] -= 1
+    return True
+
+def restock_inventory(restaurant, item, amount):
+    if item in restaurant.inventory:
+        restaurant.inventory[item] += amount
+        print(f"Restocked {item}. New quantity: {restaurant.inventory[item]}")
+    else:
+        print(f"{item} not found in inventory.")
+`;
   const tomMethodSignature = "def add_to_order";
 
   const [code, setCode] = useState(defaultCode);
@@ -609,6 +626,9 @@ def remove_from_order(customer: Customer, order_id: int, menu: Menu, item: str):
   const [personalCode, setPersonalCode] = useState(initialPersonalMethod);
   const [helpRequestCode, setHelpRequestCode] = useState(tomLiveMockCode);
   const [helpLocalVariants, setHelpLocalVariants] = useState<LocalVariantBox[]>([]);
+  const [showAssistSuggestion, setShowAssistSuggestion] = useState(false);
+  const [assistSuggestionExpanded, setAssistSuggestionExpanded] = useState(false);
+  const [assistSuggestionText, setAssistSuggestionText] = useState("Check dictionary keys before access.");
   const [personalKeystrokes, setPersonalKeystrokes] = useState(0);
   const [showHelpTomSuggestion, setShowHelpTomSuggestion] = useState(false);
   const [isTomCardVisible, setTomCardVisible] = useState(false);
@@ -697,11 +717,29 @@ def remove_from_order(customer: Customer, order_id: int, menu: Menu, item: str):
     const change = detectLineChange(previousHelpCodeRef.current, value);
     if (change) {
       setHelpLocalVariants((prev) => upsertLocalVariantBox(prev, change));
+      const normalized = change.nextLine.trim();
+      if (normalized.includes("not in")) {
+        setAssistSuggestionText("Good point to guard missing keys before indexing.");
+      } else if (normalized.includes("menu.dishes[item]")) {
+        setAssistSuggestionText("Use the same dictionary read once, then reuse it.");
+      } else if (normalized.includes("print(")) {
+        setAssistSuggestionText("Keep output format exact: Added [item]: [cost].");
+      } else {
+        setAssistSuggestionText("Keep checks local: validate key, then mutate state.");
+      }
+      setShowAssistSuggestion(true);
     }
     previousHelpCodeRef.current = value;
     setHelpRequestCode(value);
     setPersonalKeystrokes((prev) => prev + 1);
   };
+
+  useEffect(() => {
+    if (!helperAssistActive) {
+      setShowAssistSuggestion(false);
+      setAssistSuggestionExpanded(false);
+    }
+  }, [helperAssistActive]);
 
   const handleLocalVariantSelect = (boxId: string, optionIndex: number) => {
     const selectedBox = helpLocalVariants.find((box) => box.id === boxId);
@@ -1033,7 +1071,16 @@ def remove_from_order(customer: Customer, order_id: int, menu: Menu, item: str):
                         <div style={{ fontSize: "12px", fontWeight: 700, color: "#334155", marginBottom: "8px" }}>
                           Shared help space. Inline local variants appear above edited lines.
                         </div>
-                        <div style={{ flexGrow: 1, minHeight: 0 }}>
+                        <div
+                          style={{ flexGrow: 1, minHeight: 0, position: "relative" }}
+                          onMouseOver={(event) => {
+                            const target = event.target as HTMLElement | null;
+                            if (target?.closest(".cm-peer-assist-chip")) {
+                              setAssistSuggestionText("Mirror this pattern: check membership before dictionary access.");
+                              setShowAssistSuggestion(true);
+                            }
+                          }}
+                        >
                           <CodeMirror
                             height="100%"
                             value={helpRequestCode}
@@ -1053,6 +1100,68 @@ def remove_from_order(customer: Customer, order_id: int, menu: Menu, item: str):
                             ]}
                             style={{ height: "100%" }}
                           />
+                          {showAssistSuggestion && (
+                            <div
+                              style={{
+                                position: "absolute",
+                                top: "10px",
+                                right: "10px",
+                                maxWidth: "360px",
+                                background: "#ffffff",
+                                border: "1px solid #cbd5e1",
+                                borderRadius: "10px",
+                                boxShadow: "0 8px 18px rgba(15, 23, 42, 0.15)",
+                                padding: "10px",
+                                zIndex: 30,
+                              }}
+                            >
+                              <div style={{ fontSize: "11px", fontWeight: 700, color: "#0f766e", marginBottom: "4px" }}>
+                                Pete solved a similar pattern
+                              </div>
+                              <Button
+                                size="compact-xs"
+                                variant="subtle"
+                                style={{ position: "absolute", top: "4px", right: "6px", padding: 0, minWidth: "unset" }}
+                                onClick={() => {
+                                  setAssistSuggestionExpanded(false);
+                                  setShowAssistSuggestion(false);
+                                }}
+                              >
+                                Close
+                              </Button>
+                              <div style={{ fontSize: "12px", color: "#1f2937" }}>
+                                {assistSuggestionText}
+                              </div>
+                              {!assistSuggestionExpanded ? (
+                                <Button
+                                  size="compact-xs"
+                                  variant="subtle"
+                                  style={{ marginTop: "6px", paddingLeft: 0 }}
+                                  onClick={() => setAssistSuggestionExpanded(true)}
+                                >
+                                  Expand
+                                </Button>
+                              ) : (
+                                <div style={{ marginTop: "8px" }}>
+                                  <CodeMirror
+                                    height="160px"
+                                    value={peteReferenceCode}
+                                    editable={false}
+                                    extensions={[python()]}
+                                    style={{ opacity: 0.9 }}
+                                  />
+                                  <Button
+                                    size="compact-xs"
+                                    variant="subtle"
+                                    style={{ marginTop: "6px", paddingLeft: 0 }}
+                                    onClick={() => setAssistSuggestionExpanded(false)}
+                                  >
+                                    Collapse
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     ) : (
